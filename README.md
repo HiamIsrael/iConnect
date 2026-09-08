@@ -23,7 +23,8 @@ payments.
 - Venue / event pages: create venue profiles, attach gigs, view upcoming gigs at a venue
 - EPK templates: generate a shareable EPK view + downloadable .txt from profile data
 - Calendar sync: ICS export per gig + all open gigs, Google Calendar links
-- PWA / mobile: installable app shell, service worker, mobile nav (OK as a web app)
+- PWA: installable app shell, service worker, mobile nav (OK as a web app)
+- Native mobile app: Expo / React Native client for iOS, Android and web, sharing the same API
 - Pluggable payments: mock (default), Paystack, Flutterwave, Stripe (set keys via env)
 - Pluggable email: console (default) or Resend (set `RESEND_API_KEY`)
 - Admin console with reports, resolve/dismiss and account block/unblock
@@ -38,6 +39,7 @@ payments.
 ## Stack
 
 - **Frontend:** React 18 + Vite, React Router, plain CSS (no UI kit)
+- **Mobile:** Expo SDK 57 / React Native + React Navigation (under `mobile/`)
 - **Backend:** Node.js + Express, Multer for uploads, Helmet + express-rate-limit
 - **Database:** Knex + SQLite (`better-sqlite3`) by default; set `DATABASE_URL` (PostgreSQL) to use Postgres
 - **Payments:** pluggable `mock` provider (records checkout + confirmation events)
@@ -69,6 +71,33 @@ For Docker:
 docker compose up --build
 ```
 
+## Mobile app
+
+The `mobile/` directory contains an Expo / React Native client for the same API.
+
+```bash
+cd mobile
+npm install
+npm start        # Expo dev server (scan QR in Expo Go on a device)
+npm run android  # open on Android
+npm run ios      # open on iOS simulator
+npm run web      # open in a browser
+```
+
+The app reads the API base URL from `EXPO_PUBLIC_API_URL` (default
+`http://localhost:3000`).
+
+- On a simulator, `http://localhost:3000` works when the API is running on your machine.
+- On a physical device, set the public URL of the API, e.g.:
+
+```bash
+EXPO_PUBLIC_API_URL=https://iconnect.example.com npm start
+```
+
+Demo accounts are the same as the web app (see below). The app currently ships
+with the placeholder dark branding (`iConnect`) and must be re-branded and given
+store-specific icons/identifiers before any store submission.
+
 ## Tests
 
 ```bash
@@ -90,6 +119,7 @@ Migrations: `server/migrations/*.js`
 | Variable | Purpose |
 | --- | --- |
 | `PORT` | API port (default `3000`) |
+| `EXPO_PUBLIC_API_URL` | Mobile app API base URL (`mobile/` only) |
 | `HOST` | Bind address (default `0.0.0.0`) |
 | `JWT_SECRET` | JWT signing secret (change in production) |
 | `APP_URL` | Public base URL used in emails |
@@ -137,6 +167,7 @@ Migrations: `server/migrations/*.js`
 │   ├── store.js           # Knex data layer
 │   ├── seed.js
 │   └── migrations/
+├── mobile/                # Expo / React Native app
 └── test/                  # integration tests
 ```
 
