@@ -18,6 +18,8 @@ payments.
 - Availability scheduling (musicians publish free/busy time blocks)
 - Audio & video demos on musician profiles
 - Booking terms on gigs (contract terms, cancellation policy, deposit %)
+- Networking section: community feed (posts, likes, comments, recruit posts, "Following" feed)
+- Band profiles: create bands, join/accept members, follow bands, post as a band
 - Admin console with reports, resolve/dismiss and account block/unblock
 - In-app notifications for applications, messages, reviews and payments
 - Password reset / forgot-password flow (console email in dev; pluggable providers)
@@ -166,5 +168,22 @@ Migrations: `server/migrations/*.js`
 | GET | /api/admin/users | admin | List all users |
 | POST | /api/admin/users/:id/block | admin | Block a user |
 | POST | /api/admin/users/:id/unblock | admin | Unblock a user |
+| GET | /api/community/posts | — | Community feed (use `?following=true` + JWT) |
+| POST | /api/community/posts | JWT | Create a post / recruit post |
+| GET | /api/community/posts/:id | — | Post detail + comments |
+| DELETE | /api/community/posts/:id | JWT | Delete own post (or admin) |
+| POST | /api/community/posts/:id/like | JWT | Like / unlike a post |
+| POST | /api/community/posts/:id/comments | JWT | Comment on a post |
+| GET | /api/bands | — | List bands |
+| GET | /api/bands/mine | JWT | My band memberships |
+| POST | /api/bands | JWT | Create a band |
+| GET | /api/bands/:id | — | Band detail + members |
+| PUT | /api/bands/:id | JWT | Edit band (owner) |
+| DELETE | /api/bands/:id | JWT | Delete band (owner) |
+| POST | /api/bands/:id/join | JWT | Request to join |
+| POST | /api/bands/:id/members/:userId/accept | owner/admin | Accept member |
+| POST | /api/bands/:id/members/:userId/remove | owner/admin | Remove member |
+| GET | /api/follows/status/:targetType/:targetId | JWT | Follow status/count |
+| POST | /api/follows/:targetType/:targetId | JWT | Follow / unfollow |
 | GET | /api/notifications | JWT | List notifications |
 | POST | /api/notifications/read | JWT | Mark read |

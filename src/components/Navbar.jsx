@@ -17,9 +17,10 @@ export default function Navbar() {
         <div className="nav-links">
           <NavLink to="/musicians">Musicians</NavLink>
           <NavLink to="/gigs">Gigs</NavLink>
+          <NavLink to="/community">Community</NavLink>
+          <NavLink to="/bands">Bands</NavLink>
           {user?.role === 'organizer' && <NavLink to="/dashboard">My Gigs</NavLink>}
           {user?.role === 'musician' && <NavLink to="/dashboard">My Dashboard</NavLink>}
-          {user?.role === 'musician' && <NavLink to="/availability">Availability</NavLink>}
           {user && <NavLink to="/messages">Messages</NavLink>}
           {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
         </div>

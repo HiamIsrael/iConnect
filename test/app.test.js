@@ -241,6 +241,69 @@ describe('iConnect API', () => {
     expect(created.body.gig.depositPercent).toBe(25);
   });
 
+  it('lets musicians and members interact through the community feed', async () => {
+    const ayo = tokenOf(await login('ayo@example.com'));
+    const grace = tokenOf(await login('grace@example.com'));
+
+    // Seeded feed is populated.
+    const feed = await request(app).get('/api/community/posts');
+    expect(feed.body.posts.length).toBeGreaterThanOrEqual(3);
+
+    // Create a recruit post and like/comment on it.
+    const recruit = await request(app)
+      .post('/api/community/posts')
+      .set('Authorization', `Bearer ${ayo}`)
+      .send({ type: 'recruit', title: 'Need a drummer', body: 'Lagos jazz trios seeks a drummer for March dates.', topic: 'Band members', genre: 'Jazz', instrument: 'Drums' });
+    expect(recruit.status).toBe(201);
+
+    const postId = recruit.body.post.id;
+    const like = await request(app).post(`/api/community/posts/${postId}/like`).set('Authorization', `Bearer ${grace}`);
+    expect(like.body.liked).toBe(true);
+
+    const comment = await request(app).post(`/api/community/posts/${postId}/comments`).set('Authorization', `Bearer ${grace}`).send({ body: 'I know a great drummer!' });
+    expect(comment.status).toBe(201);
+
+    const detail = await request(app).get(`/api/community/posts/${postId}`);
+    expect(detail.body.post.likeCount).toBe(1);
+    expect(detail.body.comments.length).toBe(1);
+  });
+
+  it('lets users create bands, join, follow, and verify follow feed', async () => {
+    const ayo = tokenOf(await login('ayo@example.com'));
+    const grace = tokenOf(await login('grace@example.com'));
+    const admin = tokenOf(await login('admin@example.com'));
+
+    const created = await request(app)
+      .post('/api/bands')
+      .set('Authorization', `Bearer ${ayo}`)
+      .send({ name: 'Ayo Trio', genre: 'Jazz', location: 'Lagos', description: 'A new project.' });
+    expect(created.status).toBe(201);
+    const bandId = created.body.band.id;
+
+    const join = await request(app).post(`/api/bands/${bandId}/join`).set('Authorization', `Bearer ${grace}`);
+    expect(join.status).toBe(201);
+
+    // Owner accepts Grace.
+    const accept = await request(app).post(`/api/bands/${bandId}/members/u_grace/accept`).set('Authorization', `Bearer ${ayo}`);
+    expect(accept.status).toBe(200);
+
+    const detail = await request(app).get(`/api/bands/${bandId}`);
+    expect(detail.body.band.memberCount).toBe(2);
+
+    // Follow the band, then post as the band and check follow feed only includes band post.
+    const follow = await request(app).post(`/api/follows/band/${bandId}`).set('Authorization', `Bearer ${admin}`);
+    expect(follow.body.following).toBe(true);
+
+    const bandPost = await request(app)
+      .post('/api/community/posts')
+      .set('Authorization', `Bearer ${ayo}`)
+      .send({ bandId, body: 'First band update!' });
+    expect(bandPost.status).toBe(201);
+
+    const feed = await request(app).get('/api/community/posts?following=true').set('Authorization', `Bearer ${admin}`);
+    expect(feed.body.posts.some((p) => p.bandId === bandId)).toBe(true);
+  });
+
   it('supports password reset', async () => {
     const forgot = await request(app).post('/api/auth/forgot-password').send({ email: 'ayo@example.com' });
     expect(forgot.status).toBe(200);

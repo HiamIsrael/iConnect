@@ -51,6 +51,26 @@ import {
   updateReportStatus,
   setUserBlocked,
   listAllUsers,
+  listBands,
+  getBandById,
+  createBand,
+  updateBand,
+  deleteBand,
+  listBandMembers,
+  addBandMember,
+  updateBandMemberStatus,
+  removeBandMember,
+  userBandMemberships,
+  toggleFollow,
+  isFollowing,
+  listFollowCounts,
+  listCommunityPosts,
+  getCommunityPost,
+  createCommunityPost,
+  deleteCommunityPost,
+  togglePostLike,
+  listPostComments,
+  addPostComment,
   MAX_FILE_SIZE_MB,
 } from './store.js';
 import { signToken, requireAuth, requireRole, publicUser } from './auth.js';
@@ -682,6 +702,214 @@ export function createApp() {
     const user = await setUserBlocked(req.params.id, false);
     if (!user) return res.status(404).json({ error: 'User not found.' });
     res.json({ user: publicUser(user) });
+  });
+
+  // -------------------------------------------------------------------------
+  // Bands
+  // -------------------------------------------------------------------------
+  app.get('/api/bands', async (req, res) => {
+    const bands = await listBands({ q: req.query.q, genre: req.query.genre, location: req.query.location });
+    res.json({ bands });
+  });
+
+  app.get('/api/bands/mine', requireAuth, async (req, res) => {
+    const bands = await userBandMemberships(req.user.id);
+    res.json({ bands });
+  });
+
+  app.get('/api/bands/:id', async (req, res) => {
+    const band = await getBandById(req.params.id);
+    if (!band) return res.status(404).json({ error: 'Band not found.' });
+    const members = await listBandMembers(band.id);
+    res.json({ band, members });
+  });
+
+  app.post('/api/bands', requireAuth, async (req, res) => {
+    const { name } = req.body || {};
+    if (isBlank(name)) return res.status(400).json({ error: 'Band name is required.' });
+    const band = await createBand({
+      name: String(name).trim(),
+      description: String(req.body.description || '').trim(),
+      genre: String(req.body.genre || '').trim(),
+      location: String(req.body.location || '').trim(),
+      photoUrl: req.body.photoUrl || null,
+      ownerId: req.user.id,
+    });
+    res.status(201).json({ band });
+  });
+
+  app.put('/api/bands/:id', requireAuth, async (req, res) => {
+    const band = await getBandById(req.params.id);
+    if (!band) return res.status(404).json({ error: 'Band not found.' });
+    if (band.ownerId !== req.user.id) return res.status(403).json({ error: 'Only the band owner can edit it.' });
+    const updated = await updateBand(req.params.id, req.body);
+    res.json({ band: updated });
+  });
+
+  app.delete('/api/bands/:id', requireAuth, async (req, res) => {
+    const band = await getBandById(req.params.id);
+    if (!band) return res.status(404).json({ error: 'Band not found.' });
+    if (band.ownerId !== req.user.id) return res.status(403).json({ error: 'Only the band owner can delete it.' });
+    await deleteBand(req.params.id);
+    res.json({ ok: true });
+  });
+
+  app.post('/api/bands/:id/join', requireAuth, async (req, res) => {
+    const band = await getBandById(req.params.id);
+    if (!band) return res.status(404).json({ error: 'Band not found.' });
+    const membership = await addBandMember(req.params.id, req.user.id, 'member', 'pending');
+    await createNotification({
+      userId: band.ownerId,
+      type: 'band',
+      title: 'Band join request',
+      body: `${req.user.name} wants to join ${band.name}.`,
+      link: `/bands/${band.id}`,
+    });
+    res.status(201).json({ membership, band });
+  });
+
+  app.post('/api/bands/:id/members/:userId/:action', requireAuth, async (req, res) => {
+    const band = await getBandById(req.params.id);
+    if (!band) return res.status(404).json({ error: 'Band not found.' });
+
+    // Band owner or platform admin can manage members.
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin && band.ownerId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the band owner can manage members.' });
+    }
+
+    if (req.params.action === 'accept') {
+      const membership = await updateBandMemberStatus(req.params.id, req.params.userId, 'active');
+      if (!membership) return res.status(404).json({ error: 'Membership not found.' });
+      await createNotification({
+        userId: req.params.userId,
+        type: 'band',
+        title: 'Band membership accepted',
+        body: `You are now a member of ${band.name}.`,
+        link: `/bands/${band.id}`,
+      });
+      return res.json({ membership });
+    }
+    if (req.params.action === 'remove') {
+      await removeBandMember(req.params.id, req.params.userId);
+      await createNotification({
+        userId: req.params.userId,
+        type: 'band',
+        title: 'Removed from band',
+        body: `You were removed from ${band.name}.`,
+        link: '/bands',
+      });
+      return res.json({ ok: true });
+    }
+    return res.status(400).json({ error: 'Action must be accept or remove.' });
+  });
+
+  // -------------------------------------------------------------------------
+  // Follows
+  // -------------------------------------------------------------------------
+  app.get('/api/follows/status/:targetType/:targetId', requireAuth, async (req, res) => {
+    const { targetType, targetId } = req.params;
+    if (!['user', 'band'].includes(targetType)) return res.status(400).json({ error: 'Invalid target type.' });
+    const following = await isFollowing(req.user.id, targetType, targetId);
+    const count = await listFollowCounts(targetType, targetId);
+    res.json({ following, count });
+  });
+
+  app.post('/api/follows/:targetType/:targetId', requireAuth, async (req, res) => {
+    const { targetType, targetId } = req.params;
+    if (!['user', 'band'].includes(targetType)) return res.status(400).json({ error: 'Invalid target type.' });
+
+    // Validate target exists.
+    const exists = targetType === 'band' ? await getBandById(targetId) : await getUserById(targetId);
+    if (!exists) return res.status(404).json({ error: 'Target not found.' });
+
+    const result = await toggleFollow(req.user.id, targetType, targetId);
+    if (result.following && targetType === 'user' && targetId !== req.user.id) {
+      await createNotification({
+        userId: targetId,
+        type: 'follow',
+        title: 'New follower',
+        body: `${req.user.name} started following you.`,
+        link: '/community',
+      });
+    }
+    const count = await listFollowCounts(targetType, targetId);
+    res.json({ ...result, count });
+  });
+
+  // -------------------------------------------------------------------------
+  // Community feed
+  // -------------------------------------------------------------------------
+  app.get('/api/community/posts', (req, res, next) => (req.query.following === 'true' ? requireAuth(req, res, next) : next()), async (req, res) => {
+    const currentUserId = req.user?.id;
+    const posts = await listCommunityPosts({
+      q: req.query.q,
+      type: req.query.type,
+      topic: req.query.topic,
+      genre: req.query.genre,
+      location: req.query.location,
+      following: req.query.following === 'true',
+    }, currentUserId);
+    res.json({ posts });
+  });
+
+  app.get('/api/community/posts/:id', async (req, res) => {
+    const post = await getCommunityPost(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+    const comments = await listPostComments(req.params.id);
+    res.json({ post, comments });
+  });
+
+  app.post('/api/community/posts', requireAuth, async (req, res) => {
+    const body = String(req.body?.body || '').trim();
+    if (!body) return res.status(400).json({ error: 'Post body is required.' });
+
+    let bandId = null;
+    if (req.body.bandId) {
+      const band = await getBandById(req.body.bandId);
+      if (!band) return res.status(404).json({ error: 'Band not found.' });
+      bandId = band.id;
+    }
+
+    const post = await createCommunityPost({
+      authorId: req.user.id,
+      bandId,
+      type: req.body.type === 'recruit' ? 'recruit' : 'post',
+      title: String(req.body.title || '').trim(),
+      body,
+      link: String(req.body.link || '').trim(),
+      topic: String(req.body.topic || '').trim(),
+      genre: String(req.body.genre || '').trim(),
+      location: String(req.body.location || '').trim(),
+      instrument: String(req.body.instrument || '').trim(),
+    });
+    res.status(201).json({ post });
+  });
+
+  app.delete('/api/community/posts/:id', requireAuth, async (req, res) => {
+    const post = await getCommunityPost(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+    if (post.authorId !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'You can only delete your own posts.' });
+    }
+    await deleteCommunityPost(req.params.id);
+    res.json({ ok: true });
+  });
+
+  app.post('/api/community/posts/:id/like', requireAuth, async (req, res) => {
+    const post = await getCommunityPost(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+    const result = await togglePostLike(req.params.id, req.user.id);
+    res.json(result);
+  });
+
+  app.post('/api/community/posts/:id/comments', requireAuth, async (req, res) => {
+    const post = await getCommunityPost(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+    const body = String(req.body?.body || '').trim();
+    if (!body) return res.status(400).json({ error: 'Comment body is required.' });
+    const comment = await addPostComment(req.params.id, req.user.id, body);
+    res.status(201).json({ comment });
   });
 
   // -------------------------------------------------------------------------

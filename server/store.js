@@ -59,7 +59,8 @@ export async function resetDbForTests() {
   for (const table of [
     'notifications', 'payments', 'messages', 'reviews', 'password_reset_tokens',
     'reports', 'media_demos', 'availability_blocks', 'applications', 'gig_tags',
-    'gigs', 'user_tags', 'user_instruments', 'users',
+    'gigs', 'user_tags', 'user_instruments', 'users', 'post_comments', 'post_likes',
+    'community_posts', 'follows', 'band_members', 'bands',
   ]) {
     await db(table).del();
   }
@@ -138,6 +139,69 @@ export async function seedIfEmpty() {
       status: app.status || 'pending',
       created_at: iso(app.createdAt) || now,
       updated_at: iso(app.updatedAt) || now,
+    });
+  }
+
+  for (const band of data.bands || []) {
+    await db('bands').insert({
+      id: band.id,
+      name: band.name,
+      slug: band.slug,
+      description: band.description || '',
+      genre: band.genre || '',
+      location: band.location || '',
+      photo_url: band.photoUrl || null,
+      owner_id: band.ownerId,
+      created_at: iso(band.createdAt) || now,
+      updated_at: iso(band.updatedAt) || now,
+    });
+  }
+  for (const member of data.bandMembers || []) {
+    await db('band_members').insert({
+      id: member.id,
+      band_id: member.bandId,
+      user_id: member.userId,
+      role: member.role || 'member',
+      status: member.status || 'active',
+      joined_at: iso(member.joinedAt) || now,
+    });
+  }
+  for (const follow of data.follows || []) {
+    await db('follows').insert({
+      id: follow.id,
+      follower_id: follow.followerId,
+      target_type: follow.targetType,
+      target_id: follow.targetId,
+      created_at: iso(follow.createdAt) || now,
+    });
+  }
+  for (const post of data.communityPosts || []) {
+    await db('community_posts').insert({
+      id: post.id,
+      author_id: post.authorId,
+      band_id: post.bandId || null,
+      type: post.type || 'post',
+      title: post.title || '',
+      body: post.body,
+      link: post.link || '',
+      topic: post.topic || '',
+      genre: post.genre || '',
+      location: post.location || '',
+      instrument: post.instrument || '',
+      created_at: iso(post.createdAt) || now,
+      updated_at: iso(post.updatedAt) || now,
+    });
+  }
+  for (const like of data.postLikes || []) {
+    await db('post_likes').insert({ id: like.id, post_id: like.postId, user_id: like.userId, created_at: iso(like.createdAt) || now });
+  }
+  for (const comment of data.postComments || []) {
+    await db('post_comments').insert({
+      id: comment.id,
+      post_id: comment.postId,
+      author_id: comment.authorId,
+      body: comment.body,
+      created_at: iso(comment.createdAt) || now,
     });
   }
 }
@@ -922,6 +986,317 @@ export async function listAllUsers() {
     users.push(mapUser(row, instruments, tags));
   }
   return users;
+}
+
+// ---------------------------------------------------------------------------
+// Community / bands
+// ---------------------------------------------------------------------------
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || `band-${uid('b').slice(3)}`;
+}
+
+export function mapBand(row, memberCount = 0, ownerName = '') {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description || '',
+    genre: row.genre || '',
+    location: row.location || '',
+    photoUrl: row.photo_url || null,
+    ownerId: row.owner_id,
+    ownerName,
+    memberCount,
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+async function bandFromRow(row) {
+  const owner = await getUserById(row.owner_id);
+  const count = await db('band_members').where({ band_id: row.id, status: 'active' }).count({ c: '*' }).first();
+  return mapBand(row, Number(count.c) || 0, owner ? owner.name : '');
+}
+
+export async function listBands(filters = {}) {
+  const { q, genre, location } = filters;
+  const query = String(q || '').trim().toLowerCase();
+  const genreQuery = String(genre || '').toLowerCase();
+  const locationQuery = String(location || '').toLowerCase();
+
+  let rows = db('bands').orderBy('created_at', 'desc');
+  if (genreQuery) rows = rows.whereLike('genre', `%${genreQuery}%`);
+  if (locationQuery) rows = rows.whereLike('location', `%${locationQuery}%`);
+  let result = await rows;
+  if (query) result = result.filter((r) => `${r.name} ${r.description}`.toLowerCase().includes(query));
+  const bands = [];
+  for (const row of result) bands.push(await bandFromRow(row));
+  return bands;
+}
+
+export async function getBandById(id) {
+  const row = await db('bands').where({ id }).first();
+  if (!row) return null;
+  return bandFromRow(row);
+}
+
+export async function getBandBySlug(slug) {
+  const row = await db('bands').where({ slug }).first();
+  if (!row) return null;
+  return bandFromRow(row);
+}
+
+export async function createBand(data) {
+  const id = data.id || uid('b');
+  const slug = data.slug || slugify(data.name);
+  await db('bands').insert({
+    id,
+    name: data.name,
+    slug,
+    description: data.description || '',
+    genre: data.genre || '',
+    location: data.location || '',
+    photo_url: data.photoUrl || null,
+    owner_id: data.ownerId,
+  });
+  await db('band_members').insert({
+    id: uid('bm'),
+    band_id: id,
+    user_id: data.ownerId,
+    role: 'owner',
+    status: 'active',
+  });
+  return getBandById(id);
+}
+
+export async function updateBand(id, patch) {
+  const row = await db('bands').where({ id }).first();
+  if (!row) return null;
+  const base = {};
+  if (patch.name !== undefined) base.name = patch.name;
+  if (patch.description !== undefined) base.description = patch.description;
+  if (patch.genre !== undefined) base.genre = patch.genre;
+  if (patch.location !== undefined) base.location = patch.location;
+  if (patch.photoUrl !== undefined) base.photo_url = patch.photoUrl;
+  base.updated_at = new Date().toISOString();
+  if (Object.keys(base).length) await db('bands').where({ id }).update(base);
+  return getBandById(id);
+}
+
+export async function deleteBand(id) {
+  await db('bands').where({ id }).del();
+}
+
+export async function listBandMembers(bandId) {
+  const rows = await db('band_members').where({ band_id: bandId }).orderBy('joined_at', 'asc');
+  const members = [];
+  for (const row of rows) {
+    const user = await getUserById(row.user_id);
+    members.push({
+      userId: row.user_id,
+      name: user?.name || 'Unknown',
+      photoUrl: user?.photoUrl || null,
+      role: row.role,
+      status: row.status,
+      joinedAt: iso(row.joined_at),
+    });
+  }
+  return members;
+}
+
+export async function addBandMember(bandId, userId, role = 'member', status = 'pending') {
+  const existing = await db('band_members').where({ band_id: bandId, user_id: userId }).first();
+  if (existing) return existing;
+  await db('band_members').insert({ id: uid('bm'), band_id: bandId, user_id: userId, role, status });
+  return db('band_members').where({ band_id: bandId, user_id: userId }).first();
+}
+
+export async function updateBandMemberStatus(bandId, userId, status) {
+  const row = await db('band_members').where({ band_id: bandId, user_id: userId }).first();
+  if (!row) return null;
+  await db('band_members').where({ band_id: bandId, user_id: userId }).update({ status });
+  return db('band_members').where({ band_id: bandId, user_id: userId }).first();
+}
+
+export async function removeBandMember(bandId, userId) {
+  await db('band_members').where({ band_id: bandId, user_id: userId }).del();
+}
+
+export async function userBandMemberships(userId) {
+  const rows = await db('band_members').where({ user_id: userId }).orderBy('joined_at', 'desc');
+  const memberships = [];
+  for (const row of rows) {
+    const band = await getBandById(row.band_id);
+    if (band) memberships.push({ ...band, membershipRole: row.role, membershipStatus: row.status });
+  }
+  return memberships;
+}
+
+// --- Follows ---
+export async function toggleFollow(followerId, targetType, targetId) {
+  const existing = await db('follows').where({ follower_id: followerId, target_type: targetType, target_id: targetId }).first();
+  if (existing) {
+    await db('follows').where({ id: existing.id }).del();
+    return { following: false };
+  }
+  await db('follows').insert({ id: uid('f'), follower_id: followerId, target_type: targetType, target_id: targetId });
+  return { following: true };
+}
+
+export async function isFollowing(followerId, targetType, targetId) {
+  const row = await db('follows').where({ follower_id: followerId, target_type: targetType, target_id: targetId }).first();
+  return Boolean(row);
+}
+
+export async function listFollowCounts(targetType, targetId) {
+  const follower = await db('follows').where({ target_type: targetType, target_id: targetId }).count({ c: '*' }).first();
+  return Number(follower.c) || 0;
+}
+
+export async function listFollowingUsers(userId) {
+  const rows = await db('follows').where({ follower_id: userId, target_type: 'user' }).pluck('target_id');
+  return rows;
+}
+
+export async function listFollowingBands(userId) {
+  const rows = await db('follows').where({ follower_id: userId, target_type: 'band' }).pluck('target_id');
+  return rows;
+}
+
+// --- Community posts ---
+export function mapPost(row, author = null, band = null, likeCount = 0, commentCount = 0, likedByMe = false) {
+  return {
+    id: row.id,
+    authorId: row.author_id,
+    author: author ? { id: author.id, name: author.name, role: author.role, photoUrl: author.photoUrl } : null,
+    bandId: row.band_id,
+    band: band ? { id: band.id, name: band.name, slug: band.slug } : null,
+    type: row.type || 'post',
+    title: row.title || '',
+    body: row.body,
+    link: row.link || '',
+    topic: row.topic || '',
+    genre: row.genre || '',
+    location: row.location || '',
+    instrument: row.instrument || '',
+    likeCount,
+    commentCount,
+    likedByMe,
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+async function postFromRow(row, currentUserId) {
+  const [author, band, likeCount, commentCount] = await Promise.all([
+    row.band_id ? null : getUserById(row.author_id),
+    row.band_id ? getBandById(row.band_id) : null,
+    db('post_likes').where({ post_id: row.id }).count({ c: '*' }).first(),
+    db('post_comments').where({ post_id: row.id }).count({ c: '*' }).first(),
+  ]);
+  const likedByMe = currentUserId ? await isPostLiked(row.id, currentUserId) : false;
+  return mapPost(row, author, band, Number(likeCount.c) || 0, Number(commentCount.c) || 0, likedByMe);
+}
+
+export async function isPostLiked(postId, userId) {
+  const row = await db('post_likes').where({ post_id: postId, user_id: userId }).first();
+  return Boolean(row);
+}
+
+export async function listCommunityPosts(filters = {}, currentUserId = null) {
+  const { q, type, topic, genre, location, following } = filters;
+  const query = String(q || '').trim().toLowerCase();
+  const typeQuery = String(type || '').toLowerCase();
+  const topicQuery = String(topic || '').toLowerCase();
+  const genreQuery = String(genre || '').toLowerCase();
+  const locationQuery = String(location || '').toLowerCase();
+
+  let result;
+  if (following && currentUserId) {
+    const userFollows = await listFollowingUsers(currentUserId);
+    const bandFollows = await listFollowingBands(currentUserId);
+    if (!userFollows.length && !bandFollows.length) return [];
+    result = await db('community_posts')
+      .where((b) => b.whereIn('author_id', userFollows).orWhereIn('band_id', bandFollows))
+      .orderBy('created_at', 'desc');
+  } else {
+    let rows = db('community_posts').orderBy('created_at', 'desc');
+    if (typeQuery) rows = rows.where({ type: typeQuery });
+    if (topicQuery) rows = rows.whereLike('topic', `%${topicQuery}%`);
+    if (genreQuery) rows = rows.whereLike('genre', `%${genreQuery}%`);
+    if (locationQuery) rows = rows.whereLike('location', `%${locationQuery}%`);
+    result = await rows;
+  }
+
+  if (query) result = result.filter((r) => `${r.title || ''} ${r.body} ${r.topic} ${r.genre}`.toLowerCase().includes(query));
+  const posts = [];
+  for (const row of result) posts.push(await postFromRow(row, currentUserId));
+  return posts;
+}
+
+export async function getCommunityPost(id, currentUserId = null) {
+  const row = await db('community_posts').where({ id }).first();
+  if (!row) return null;
+  return postFromRow(row, currentUserId);
+}
+
+export async function createCommunityPost(data) {
+  const id = data.id || uid('p');
+  await db('community_posts').insert({
+    id,
+    author_id: data.authorId,
+    band_id: data.bandId || null,
+    type: data.type || 'post',
+    title: data.title || '',
+    body: data.body,
+    link: data.link || '',
+    topic: data.topic || '',
+    genre: data.genre || '',
+    location: data.location || '',
+    instrument: data.instrument || '',
+  });
+  return getCommunityPost(id, data.authorId);
+}
+
+export async function deleteCommunityPost(id) {
+  await db('community_posts').where({ id }).del();
+}
+
+export async function togglePostLike(postId, userId) {
+  const existing = await db('post_likes').where({ post_id: postId, user_id: userId }).first();
+  if (existing) {
+    await db('post_likes').where({ id: existing.id }).del();
+    return { liked: false };
+  }
+  await db('post_likes').insert({ id: uid('pl'), post_id: postId, user_id: userId });
+  return { liked: true };
+}
+
+export async function listPostComments(postId) {
+  const rows = await db('post_comments').where({ post_id: postId }).orderBy('created_at', 'asc');
+  const comments = [];
+  for (const row of rows) {
+    const author = await getUserById(row.author_id);
+    comments.push({
+      id: row.id,
+      postId: row.post_id,
+      author: author ? { id: author.id, name: author.name, photoUrl: author.photoUrl, role: author.role } : null,
+      body: row.body,
+      createdAt: iso(row.created_at),
+    });
+  }
+  return comments;
+}
+
+export async function addPostComment(postId, authorId, body) {
+  const id = uid('pc');
+  await db('post_comments').insert({ id, post_id: postId, author_id: authorId, body: String(body).trim() });
+  const row = await db('post_comments').where({ id }).first();
+  const author = await getUserById(authorId);
+  return { id: row.id, postId, author: { id: author.id, name: author.name, photoUrl: author.photoUrl, role: author.role }, body: row.body, createdAt: iso(row.created_at) };
 }
 
 export { MAX_FILE_SIZE_MB };

@@ -15,6 +15,7 @@ export default function MusicianProfile() {
   const [average, setAverage] = useState(null);
   const [availability, setAvailability] = useState([]);
   const [demos, setDemos] = useState([]);
+  const [follow, setFollow] = useState({ following: false, count: 0 });
   const [loading, setLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -24,17 +25,27 @@ export default function MusicianProfile() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.get(`/musicians/${id}`), api.get(`/reviews/user/${id}`), api.get(`/musicians/${id}/availability`), api.get(`/musicians/${id}/demos`)])
-      .then(([data, rev, avail, dem]) => {
+    const tasks = [api.get(`/musicians/${id}`), api.get(`/reviews/user/${id}`), api.get(`/musicians/${id}/availability`), api.get(`/musicians/${id}/demos`)];
+    if (user) tasks.push(api.get(`/follows/status/user/${id}`));
+    Promise.all(tasks)
+      .then(([data, rev, avail, dem, f]) => {
         setMusician(data.musician);
         setReviews(rev.reviews || []);
         setAverage(rev.average);
         setAvailability(avail.availability || []);
         setDemos(dem.demos || []);
+        if (f) setFollow({ following: f.following, count: f.count });
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
+
+  async function toggleFollow() {
+    try {
+      const data = await api.post(`/follows/user/${id}`);
+      setFollow({ following: data.following, count: data.count });
+    } catch { /* ignore */ }
+  }
 
   async function submitReport(e) {
     e.preventDefault();
@@ -124,6 +135,11 @@ export default function MusicianProfile() {
           )}
 
           <Link to="/gigs" className="btn primary block" style={{ marginTop: 14 }}>Browse open gigs</Link>
+          {user && user.id !== musician.id && (
+            <button className={`btn block ${follow.following ? '' : 'primary'}`} style={{ marginTop: 10 }} onClick={toggleFollow}>
+              {follow.following ? 'Following ✓' : '+ Follow'} ({follow.count})
+            </button>
+          )}
           {user && user.id !== musician.id && (
             <Link to={`/messages?to=${musician.id}`} className="btn block" style={{ marginTop: 10 }}>💬 Message</Link>
           )}

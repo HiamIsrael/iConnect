@@ -310,5 +310,134 @@ export function seedData() {
     },
   ];
 
-  return { users, gigs, applications };
+  const bands = [
+    {
+      id: 'b_lagos_collective',
+      name: 'The Lagos Collective',
+      slug: 'the-lagos-collective',
+      description: 'A genre-crossing collective of Lagos session musicians — horns, keys, rhythm and vocals for festivals, studio and live shows.',
+      genre: 'Afrobeat / Jazz',
+      location: 'Lagos, Nigeria',
+      ownerId: 'u_tunde',
+      createdAt: iso(-200),
+      updatedAt: iso(-50),
+    },
+    {
+      id: 'b_grace_assembly',
+      name: 'Grace Assembly',
+      slug: 'grace-assembly',
+      description: 'A vibrant performing group fronted by Grace Eze, blending Soul, Gospel and Afro-fusion for churches, showcases and corporate events.',
+      genre: 'Soul / Gospel',
+      location: 'Lagos, Nigeria',
+      ownerId: 'u_grace',
+      createdAt: iso(-160),
+      updatedAt: iso(-40),
+    },
+    {
+      id: 'b_fusion_project',
+      name: 'Fusion Project',
+      slug: 'fusion-project',
+      description: 'An experimental jazz/fusion trio exploring live electronics. Always open to guest horns and strings.',
+      genre: 'Jazz / Fusion',
+      location: 'Abuja, Nigeria',
+      ownerId: 'u_nia',
+      createdAt: iso(-120),
+      updatedAt: iso(-30),
+    },
+  ];
+
+  const bandMembers = [
+    { id: 'bm_001', bandId: 'b_lagos_collective', userId: 'u_tunde', role: 'owner', status: 'active' },
+    { id: 'bm_002', bandId: 'b_lagos_collective', userId: 'u_ayo', role: 'member', status: 'active' },
+    { id: 'bm_003', bandId: 'b_lagos_collective', userId: 'u_grace', role: 'member', status: 'pending' },
+    { id: 'bm_004', bandId: 'b_grace_assembly', userId: 'u_grace', role: 'owner', status: 'active' },
+    { id: 'bm_005', bandId: 'b_grace_assembly', userId: 'u_ayo', role: 'member', status: 'active' },
+    { id: 'bm_006', bandId: 'b_fusion_project', userId: 'u_nia', role: 'owner', status: 'active' },
+  ];
+
+  const follows = [
+    { id: 'f_001', followerId: 'u_ayo', targetType: 'band', targetId: 'b_lagos_collective', createdAt: iso(-30) },
+    { id: 'f_002', followerId: 'u_ayo', targetType: 'user', targetId: 'u_grace', createdAt: iso(-25) },
+    { id: 'f_003', followerId: 'u_grace', targetType: 'band', targetId: 'b_grace_assembly', createdAt: iso(-25) },
+    { id: 'f_004', followerId: 'u_grace', targetType: 'user', targetId: 'u_nia', createdAt: iso(-20) },
+    { id: 'f_005', followerId: 'u_nia', targetType: 'user', targetId: 'u_ayo', createdAt: iso(-18) },
+  ];
+
+  const communityPosts = [
+    {
+      id: 'p_001',
+      authorId: 'u_ayo',
+      bandId: 'b_lagos_collective',
+      type: 'post',
+      title: 'Festival season is heating up 🔥',
+      body: 'Our collective is lining up festival sets for December. If you are a horn player or percussionist in Lagos and want to jam with us, drop a comment — let us build a set list.',
+      link: '',
+      topic: 'Collaboration',
+      genre: 'Afrobeat',
+      location: 'Lagos',
+      createdAt: iso(-6),
+      updatedAt: iso(-6),
+    },
+    {
+      id: 'p_002',
+      authorId: 'u_grace',
+      bandId: null,
+      type: 'recruit',
+      title: 'Looking for a keyboardist',
+      body: 'Grace Assembly needs a versatile keyboardist for a December corporate showcase and a church praise night. Must be comfortable with Soul, Gospel and Afro-fusion.',
+      link: '',
+      topic: 'Band members',
+      genre: 'Soul / Gospel',
+      location: 'Lagos',
+      instrument: 'Keyboard / Piano',
+      createdAt: iso(-5),
+      updatedAt: iso(-5),
+    },
+    {
+      id: 'p_003',
+      authorId: 'u_nia',
+      bandId: null,
+      type: 'post',
+      title: 'Open mic night in Abuja',
+      body: 'Bringing back brunch open mic at Island Café. Acoustic acts only, originals encouraged. DM me to grab a slot before the calendar fills.',
+      link: '',
+      topic: 'Events',
+      genre: 'Acoustic',
+      location: 'Abuja',
+      createdAt: iso(-4),
+      updatedAt: iso(-4),
+    },
+  ];
+
+  const postLikes = [
+    { id: 'pl_001', postId: 'p_001', userId: 'u_grace', createdAt: iso(-3) },
+    { id: 'pl_002', postId: 'p_001', userId: 'u_nia', createdAt: iso(-3) },
+    { id: 'pl_003', postId: 'p_002', userId: 'u_ayo', createdAt: iso(-2) },
+  ];
+
+  const postComments = [
+    {
+      id: 'pc_001',
+      postId: 'p_001',
+      authorId: 'u_grace',
+      body: 'Count me in for percussion — I can also help with background vocals.',
+      createdAt: iso(-3),
+    },
+    {
+      id: 'pc_002',
+      postId: 'p_001',
+      authorId: 'u_tunde',
+      body: 'Yes! Let us get the horns locked in before December.',
+      createdAt: iso(-2),
+    },
+    {
+      id: 'pc_003',
+      postId: 'p_002',
+      authorId: 'u_ayo',
+      body: 'Happy to recommend a great keyboardist. Sending details now.',
+      createdAt: iso(-1),
+    },
+  ];
+
+  return { users, gigs, applications, bands, bandMembers, follows, communityPosts, postLikes, postComments };
 }
