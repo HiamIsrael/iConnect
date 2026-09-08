@@ -118,6 +118,19 @@ export function seedData() {
       roleLabel: 'Event hall',
       createdAt: iso(-100),
     },
+    {
+      id: 'u_admin',
+      role: 'admin',
+      name: 'iConnect Admin',
+      email: 'admin@example.com',
+      passwordHash: hash(demoPassword),
+      title: 'Platform admin',
+      bio: 'Administrator responsible for keeping iConnect safe and trustworthy.',
+      location: 'Lagos, Nigeria',
+      genre: '',
+      roleLabel: 'Admin',
+      createdAt: iso(-60),
+    },
   ];
 
   const gigs = [

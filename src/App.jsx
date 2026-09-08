@@ -16,6 +16,8 @@ import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
 import Messages from './pages/Messages';
+import Availability from './pages/Availability';
+import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 
 function ScrollToTop() {
@@ -43,6 +45,8 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+        <Route path="/availability" element={<ProtectedRoute role="musician"><Availability /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute role="admin"><Admin /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />

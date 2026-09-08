@@ -56,7 +56,11 @@ export async function resetDbForTests() {
     throw new Error('resetDbForTests only supports SQLite.');
   }
   await db.raw('PRAGMA foreign_keys = OFF');
-  for (const table of ['notifications', 'payments', 'messages', 'reviews', 'password_reset_tokens', 'applications', 'gig_tags', 'gigs', 'user_tags', 'user_instruments', 'users']) {
+  for (const table of [
+    'notifications', 'payments', 'messages', 'reviews', 'password_reset_tokens',
+    'reports', 'media_demos', 'availability_blocks', 'applications', 'gig_tags',
+    'gigs', 'user_tags', 'user_instruments', 'users',
+  ]) {
     await db(table).del();
   }
   await db.raw('PRAGMA foreign_keys = ON');
@@ -183,6 +187,7 @@ export function mapUser(row, instruments = [], tags = []) {
     photoUrl: row.photo_url || null,
     epkUrl: row.epk_url || null,
     socials: parseSocials(row),
+    blocked: Boolean(row.is_blocked),
     instruments,
     tags,
     createdAt: iso(row.created_at),
@@ -211,6 +216,7 @@ export async function createUser(data) {
     photo_url: data.photoUrl || null,
     epk_url: data.epkUrl || null,
     socials: data.socials ? JSON.stringify(data.socials) : null,
+    is_blocked: data.isBlocked ? true : false,
   });
   const instruments = (data.instruments || []).map((instrument) => ({ user_id: id, instrument }));
   const tags = (data.tags || []).map((tag) => ({ user_id: id, tag }));
@@ -235,6 +241,7 @@ export async function updateUser(id, patch) {
   if (patch.photoUrl !== undefined) base.photo_url = patch.photoUrl;
   if (patch.epkUrl !== undefined) base.epk_url = patch.epkUrl;
   if (patch.socials !== undefined) base.socials = patch.socials ? JSON.stringify(patch.socials) : null;
+  if (patch.isBlocked !== undefined) base.is_blocked = patch.isBlocked ? true : false;
   if (patch.passwordHash !== undefined) base.password_hash = patch.passwordHash;
   if (patch.rate) {
     base.rate_currency = patch.rate.currency || 'NGN';
@@ -321,6 +328,9 @@ export function mapGig(row, tags = [], applicationCount = 0) {
     genre: row.genre || '',
     tags,
     requirements: row.requirements || '',
+    contractTerms: row.contract_terms || '',
+    cancellationPolicy: row.cancellation_policy || '',
+    depositPercent: Number(row.deposit_percent) || 0,
     hostId: row.host_id,
     hostName: row.host_name,
     applicationCount,
@@ -387,6 +397,9 @@ export async function createGig(data) {
     status: data.status || 'open',
     genre: data.genre || '',
     requirements: data.requirements || '',
+    contract_terms: data.contractTerms || '',
+    cancellation_policy: data.cancellationPolicy || '',
+    deposit_percent: Math.max(0, Math.min(100, Number(data.depositPercent) || 0)),
     host_id: data.hostId,
     host_name: data.hostName,
   });
@@ -409,6 +422,9 @@ export async function updateGig(id, patch) {
   if (patch.endTime !== undefined) base.end_time = patch.endTime;
   if (patch.genre !== undefined) base.genre = patch.genre;
   if (patch.requirements !== undefined) base.requirements = patch.requirements;
+  if (patch.contractTerms !== undefined) base.contract_terms = patch.contractTerms;
+  if (patch.cancellationPolicy !== undefined) base.cancellation_policy = patch.cancellationPolicy;
+  if (patch.depositPercent !== undefined) base.deposit_percent = Math.max(0, Math.min(100, Number(patch.depositPercent) || 0));
   if (patch.status !== undefined) base.status = patch.status;
   if (patch.fee) {
     base.fee_currency = patch.fee.currency || 'NGN';
@@ -743,6 +759,169 @@ export async function sendMessage({ senderId, receiverId, body }) {
   });
   const row = await db('messages').where({ id }).first();
   return mapMessage(row);
+}
+
+// ---------------------------------------------------------------------------
+// Availability scheduling
+// ---------------------------------------------------------------------------
+export function mapAvailability(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title || '',
+    startAt: iso(row.start_at),
+    endAt: iso(row.end_at),
+    status: row.status || 'available',
+    note: row.note || '',
+    createdAt: iso(row.created_at),
+  };
+}
+
+export async function listAvailability(userId) {
+  const rows = await db('availability_blocks')
+    .where({ user_id: userId })
+    .where('end_at', '>', new Date().toISOString())
+    .orderBy('start_at', 'asc');
+  return rows.map(mapAvailability);
+}
+
+export async function createAvailabilityBlock(data) {
+  const id = uid('av');
+  await db('availability_blocks').insert({
+    id,
+    user_id: data.userId,
+    title: data.title || '',
+    start_at: data.startAt,
+    end_at: data.endAt,
+    status: data.status || 'available',
+    note: data.note || '',
+  });
+  const row = await db('availability_blocks').where({ id }).first();
+  return mapAvailability(row);
+}
+
+export async function deleteAvailabilityBlock(userId, id) {
+  const row = await db('availability_blocks').where({ id, user_id: userId }).first();
+  if (!row) return null;
+  await db('availability_blocks').where({ id }).del();
+  return mapAvailability(row);
+}
+
+// ---------------------------------------------------------------------------
+// Media demos
+// ---------------------------------------------------------------------------
+export function mapDemo(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    title: row.title || '',
+    url: row.url,
+    createdAt: iso(row.created_at),
+  };
+}
+
+export async function listDemos(userId) {
+  const rows = await db('media_demos').where({ user_id: userId }).orderBy('created_at', 'desc');
+  return rows.map(mapDemo);
+}
+
+export async function createDemo(data) {
+  const id = uid('demo');
+  await db('media_demos').insert({
+    id,
+    user_id: data.userId,
+    type: data.type === 'video' ? 'video' : 'audio',
+    title: data.title || '',
+    url: data.url,
+  });
+  const row = await db('media_demos').where({ id }).first();
+  return mapDemo(row);
+}
+
+export async function deleteDemo(userId, id) {
+  const row = await db('media_demos').where({ id, user_id: userId }).first();
+  if (!row) return null;
+  await db('media_demos').where({ id }).del();
+  return mapDemo(row);
+}
+
+// ---------------------------------------------------------------------------
+// Reports & moderation
+// ---------------------------------------------------------------------------
+export function mapReport(row, reporter = null) {
+  return {
+    id: row.id,
+    reporterId: row.reporter_id,
+    reporter: reporter ? { id: reporter.id, name: reporter.name, role: reporter.role } : null,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    reason: row.reason,
+    details: row.details || '',
+    status: row.status || 'open',
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+export async function createReport({ reporterId, targetType, targetId, reason, details }) {
+  const id = uid('rep');
+  await db('reports').insert({
+    id,
+    reporter_id: reporterId,
+    target_type: targetType,
+    target_id: String(targetId),
+    reason: String(reason).trim().slice(0, 120),
+    details: String(details || '').trim().slice(0, 2000),
+    status: 'open',
+  });
+  return getReportById(id);
+}
+
+export async function getReportById(id) {
+  const row = await db('reports').where({ id }).first();
+  if (!row) return null;
+  const reporter = await getUserById(row.reporter_id);
+  return mapReport(row, reporter);
+}
+
+export async function listReports(status = '') {
+  let query = db('reports').orderBy('created_at', 'desc');
+  if (status) query = query.where({ status });
+  const rows = await query;
+  const reports = [];
+  for (const row of rows) {
+    const reporter = await getUserById(row.reporter_id);
+    reports.push(mapReport(row, reporter));
+  }
+  return reports;
+}
+
+export async function updateReportStatus(id, status) {
+  const row = await db('reports').where({ id }).first();
+  if (!row) return null;
+  await db('reports').where({ id }).update({ status, updated_at: new Date().toISOString() });
+  return getReportById(id);
+}
+
+export async function setUserBlocked(id, blocked) {
+  const row = await db('users').where({ id }).first();
+  if (!row) return null;
+  await db('users').where({ id }).update({ is_blocked: blocked ? true : false, updated_at: new Date().toISOString() });
+  return getUserById(id);
+}
+
+export async function listAllUsers() {
+  const rows = await db('users').orderBy('created_at', 'desc');
+  const users = [];
+  for (const row of rows) {
+    const [instruments, tags] = await Promise.all([
+      db('user_instruments').where({ user_id: row.id }).pluck('instrument'),
+      db('user_tags').where({ user_id: row.id }).pluck('tag'),
+    ]);
+    users.push(mapUser(row, instruments, tags));
+  }
+  return users;
 }
 
 export { MAX_FILE_SIZE_MB };

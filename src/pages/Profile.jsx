@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, uploadFile } from '../api';
 import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/Avatar';
+import Modal from '../components/Modal';
 
 export default function Profile() {
   const { user, refresh } = useAuth();
@@ -26,6 +27,16 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState('');
   const [message, setMessage] = useState(null);
+  const [demos, setDemos] = useState([]);
+  const [demosOpen, setDemosOpen] = useState(false);
+  const [demoForm, setDemoForm] = useState({ type: 'audio', title: '', url: '' });
+  const [savingDemo, setSavingDemo] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'musician') {
+      api.get(`/musicians/${user.id}/demos`).then((d) => setDemos(d.demos)).catch(() => {});
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -72,6 +83,32 @@ export default function Profile() {
     } finally {
       setUploading('');
       e.target.value = '';
+    }
+  }
+
+  async function addDemo(e) {
+    e.preventDefault();
+    if (!demoForm.url) return;
+    setSavingDemo(true);
+    setMessage(null);
+    try {
+      const data = await api.post(`/musicians/${user.id}/demos`, demoForm);
+      setDemos((d) => [data.demo, ...d]);
+      setDemoForm({ type: 'audio', title: '', url: '' });
+      setDemosOpen(false);
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setSavingDemo(false);
+    }
+  }
+
+  async function deleteDemo(id) {
+    try {
+      await api.del(`/musicians/${user.id}/demos/${id}`);
+      setDemos((d) => d.filter((x) => x.id !== id));
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
     }
   }
 
@@ -187,11 +224,57 @@ export default function Profile() {
             </select>
           </label>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button className="btn primary" disabled={saving || !!uploading}>{saving ? 'Saving…' : 'Save profile'}</button>
+            <Link to="/availability" className="btn">🗓 Manage availability</Link>
             <Link to="/dashboard" className="btn">Go to dashboard</Link>
           </div>
         </form>
+
+        {user?.role === 'musician' && (
+          <div className="detail-card" style={{ marginTop: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <h3 className="section-title" style={{ marginBottom: 0 }}>Audio & video demos</h3>
+              <button className="btn small primary" onClick={() => setDemosOpen(true)}>+ Add demo</button>
+            </div>
+            {demos.length === 0 ? (
+              <p className="muted" style={{ marginBottom: 0 }}>Add audio or video links so organizers can hear you before booking.</p>
+            ) : (
+              <div className="grid" style={{ marginTop: 16 }}>
+                {demos.map((d) => (
+                  <div key={d.id} className="card" style={{ background: 'var(--bg-soft)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                      <strong>{d.title || d.type}</strong>
+                      <button className="btn small" onClick={() => deleteDemo(d.id)}>Remove</button>
+                    </div>
+                    {d.type === 'audio'
+                      ? <audio controls src={d.url} style={{ width: '100%', marginTop: 10 }} />
+                      : <a href={d.url} target="_blank" rel="noreferrer" className="btn small" style={{ marginTop: 10 }}>▶ Play / open video</a>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <Modal open={demosOpen} onClose={() => setDemosOpen(false)} title="Add a demo">
+          <form className="form-stack" onSubmit={addDemo}>
+            <label>Type
+              <select value={demoForm.type} onChange={(e) => setDemoForm((f) => ({ ...f, type: e.target.value }))}>
+                <option value="audio">Audio</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+            <label>Title <input value={demoForm.title} onChange={(e) => setDemoForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Live sax solo" /></label>
+            <label>URL (mp3/wav for audio, YouTube or mp4 for video)
+              <input value={demoForm.url} onChange={(e) => setDemoForm((f) => ({ ...f, url: e.target.value }))} placeholder="https://…" required />
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" className="btn" onClick={() => setDemosOpen(false)}>Cancel</button>
+              <button className="btn primary" disabled={savingDemo}>{savingDemo ? 'Adding…' : 'Add demo'}</button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </div>
   );

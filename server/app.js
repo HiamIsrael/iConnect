@@ -40,6 +40,17 @@ import {
   listThreads,
   listMessagesWith,
   sendMessage,
+  listAvailability,
+  createAvailabilityBlock,
+  deleteAvailabilityBlock,
+  listDemos,
+  createDemo,
+  deleteDemo,
+  createReport,
+  listReports,
+  updateReportStatus,
+  setUserBlocked,
+  listAllUsers,
   MAX_FILE_SIZE_MB,
 } from './store.js';
 import { signToken, requireAuth, requireRole, publicUser } from './auth.js';
@@ -168,6 +179,7 @@ export function createApp() {
     if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
+    if (user.blocked) return res.status(403).json({ error: 'This account has been suspended.' });
     return res.json({ token: signToken(user), user: publicUser(user) });
   });
 
@@ -307,6 +319,9 @@ export function createApp() {
       genre: String(req.body.genre || '').trim(),
       tags: toArray(req.body.tags),
       requirements: String(req.body.requirements || '').trim(),
+      contractTerms: String(req.body.contractTerms || '').trim(),
+      cancellationPolicy: String(req.body.cancellationPolicy || '').trim(),
+      depositPercent: Number(req.body.depositPercent) || 0,
       hostId: req.user.id,
       hostName: `${req.user.name}${req.user.title ? ` · ${req.user.title}` : ''}`,
     });
@@ -403,15 +418,19 @@ export function createApp() {
     if (application.status !== 'accepted') return res.status(400).json({ error: 'This application must be accepted before payment.' });
     if (!application.gig) return res.status(404).json({ error: 'The gig is no longer available.' });
 
+    const fullAmount = application.gig.fee.amount;
+    const depositPercent = Number(application.gig.depositPercent) || 0;
+    const amount = depositPercent > 0 ? Math.round((fullAmount * depositPercent) / 100) : fullAmount;
+
     const payment = await createPayment({
       applicationId: application.id,
       gigId: application.gig.id,
       payerId: req.user.id,
-      amount: application.gig.fee.amount,
+      amount,
       currency: application.gig.fee.currency,
       provider: 'mock',
     });
-    res.status(201).json({ payment, amount: application.gig.fee.amount, currency: application.gig.fee.currency });
+    res.status(201).json({ payment, amount, currency: application.gig.fee.currency, depositPercent, fullAmount });
   });
 
   app.post('/api/payments/:id/confirm', requireAuth, async (req, res) => {
@@ -548,6 +567,121 @@ export function createApp() {
   app.post('/api/notifications/read', requireAuth, async (req, res) => {
     await markNotificationsRead(req.user.id);
     res.json({ ok: true });
+  });
+
+  // -------------------------------------------------------------------------
+  // Availability
+  // -------------------------------------------------------------------------
+  app.get('/api/musicians/:id/availability', async (req, res) => {
+    const user = await getUserById(req.params.id);
+    if (!user || user.role !== 'musician') return res.status(404).json({ error: 'Musician not found.' });
+    const availability = await listAvailability(user.id);
+    res.json({ availability });
+  });
+
+  app.post('/api/musicians/:id/availability', requireAuth, requireRole('musician'), async (req, res) => {
+    if (req.params.id !== req.user.id) return res.status(404).json({ error: 'Musician profile not found.' });
+    const { startAt, endAt, status, title, note } = req.body || {};
+    if (!startAt || !endAt) return res.status(400).json({ error: 'Start and end times are required.' });
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) {
+      return res.status(400).json({ error: 'Invalid availability time range.' });
+    }
+    const block = await createAvailabilityBlock({
+      userId: req.user.id,
+      title: String(title || '').trim(),
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+      status: status === 'unavailable' ? 'unavailable' : 'available',
+      note: String(note || '').trim(),
+    });
+    res.status(201).json({ availability: block });
+  });
+
+  app.delete('/api/availability/:id', requireAuth, requireRole('musician'), async (req, res) => {
+    const removed = await deleteAvailabilityBlock(req.user.id, req.params.id);
+    if (!removed) return res.status(404).json({ error: 'Availability block not found.' });
+    res.json({ ok: true });
+  });
+
+  // -------------------------------------------------------------------------
+  // Media demos
+  // -------------------------------------------------------------------------
+  app.get('/api/musicians/:id/demos', async (req, res) => {
+    const user = await getUserById(req.params.id);
+    if (!user || user.role !== 'musician') return res.status(404).json({ error: 'Musician not found.' });
+    const demos = await listDemos(user.id);
+    res.json({ demos });
+  });
+
+  app.post('/api/musicians/:id/demos', requireAuth, requireRole('musician'), async (req, res) => {
+    if (req.params.id !== req.user.id) return res.status(404).json({ error: 'Musician profile not found.' });
+    const { type, title, url } = req.body || {};
+    if (!type || !['audio', 'video'].includes(type)) return res.status(400).json({ error: 'Demo type must be audio or video.' });
+    if (!url) return res.status(400).json({ error: 'Demo URL is required.' });
+    const demo = await createDemo({ userId: req.user.id, type, title: String(title || '').trim(), url: String(url).trim() });
+    res.status(201).json({ demo });
+  });
+
+  app.delete('/api/musicians/:id/demos/:demoId', requireAuth, requireRole('musician'), async (req, res) => {
+    if (req.params.id !== req.user.id) return res.status(404).json({ error: 'Musician profile not found.' });
+    const removed = await deleteDemo(req.user.id, req.params.demoId);
+    if (!removed) return res.status(404).json({ error: 'Demo not found.' });
+    res.json({ ok: true });
+  });
+
+  // -------------------------------------------------------------------------
+  // Reports & admin moderation
+  // -------------------------------------------------------------------------
+  app.post('/api/reports', requireAuth, async (req, res) => {
+    const { targetType, targetId, reason, details } = req.body || {};
+    if (!targetType || !targetId || !reason) {
+      return res.status(400).json({ error: 'Target, reason and details are required.' });
+    }
+    if (!['user', 'gig', 'review', 'message'].includes(targetType)) {
+      return res.status(400).json({ error: 'Invalid report target type.' });
+    }
+    const report = await createReport({
+      reporterId: req.user.id,
+      targetType,
+      targetId,
+      reason,
+      details,
+    });
+    res.status(201).json({ report });
+  });
+
+  app.get('/api/admin/reports', requireAuth, requireRole('admin'), async (req, res) => {
+    const reports = await listReports(req.query.status || '');
+    res.json({ reports });
+  });
+
+  app.put('/api/admin/reports/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    const status = req.body?.status;
+    if (!['open', 'resolved', 'dismissed'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be open, resolved or dismissed.' });
+    }
+    const report = await updateReportStatus(req.params.id, status);
+    if (!report) return res.status(404).json({ error: 'Report not found.' });
+    res.json({ report });
+  });
+
+  app.get('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) => {
+    const users = await listAllUsers();
+    res.json({ users });
+  });
+
+  app.post('/api/admin/users/:id/block', requireAuth, requireRole('admin'), async (req, res) => {
+    const user = await setUserBlocked(req.params.id, true);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ user: publicUser(user) });
+  });
+
+  app.post('/api/admin/users/:id/unblock', requireAuth, requireRole('admin'), async (req, res) => {
+    const user = await setUserBlocked(req.params.id, false);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ user: publicUser(user) });
   });
 
   // -------------------------------------------------------------------------

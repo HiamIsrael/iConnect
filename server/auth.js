@@ -33,6 +33,7 @@ export async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, JWT_SECRET);
     const user = await getUserById(payload.sub);
     if (!user) return res.status(401).json({ error: 'Account no longer exists.' });
+    if (user.blocked) return res.status(403).json({ error: 'This account has been suspended.' });
     req.user = user;
     next();
   } catch {

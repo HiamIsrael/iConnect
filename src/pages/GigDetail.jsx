@@ -77,6 +77,19 @@ export default function GigDetail() {
               </>
             )}
 
+            {(gig.contractTerms || gig.cancellationPolicy || gig.depositPercent > 0) && (
+              <div style={{ marginTop: 22 }}>
+                <h3 className="section-title">Booking terms</h3>
+                {gig.depositPercent > 0 && (
+                  <div className="alert" style={{ marginBottom: 12 }}>
+                    💳 {gig.depositPercent}% deposit of {formatMoney(gig.fee?.amount, gig.fee?.currency)} = {formatMoney(Math.round((gig.fee.amount * gig.depositPercent) / 100), gig.fee?.currency)} required to lock the booking.
+                  </div>
+                )}
+                {gig.contractTerms && <p style={{ color: 'var(--text-muted)' }}><strong>Contract terms:</strong> {gig.contractTerms}</p>}
+                {gig.cancellationPolicy && <p style={{ color: 'var(--text-muted)' }}><strong>Cancellation:</strong> {gig.cancellationPolicy}</p>}
+              </div>
+            )}
+
             {(gig.tags || []).length > 0 && (
               <div style={{ marginTop: 22 }}>
                 {(gig.tags || []).map((t) => <span key={t} className="badge" style={{ margin: '2px 6px 2px 0' }}>{t}</span>)}

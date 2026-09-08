@@ -15,9 +15,13 @@ payments.
 - Musician dashboard: track applications, pay the booking fee
 - Direct messaging between musicians and organizers
 - Reviews & ratings after an accepted booking
+- Availability scheduling (musicians publish free/busy time blocks)
+- Audio & video demos on musician profiles
+- Booking terms on gigs (contract terms, cancellation policy, deposit %)
+- Admin console with reports, resolve/dismiss and account block/unblock
 - In-app notifications for applications, messages, reviews and payments
 - Password reset / forgot-password flow (console email in dev; pluggable providers)
-- Auth (JWT + bcrypt), role-based access (musician / organizer)
+- Auth (JWT + bcrypt), role-based access (musician / organizer / admin)
 - Security hardening: Helmet, rate limiting, configurable env
 - Database-backed with migrations and a seed script (SQLite default / Postgres via `DATABASE_URL`)
 - Automated integration tests (Vitest + Supertest)
@@ -92,6 +96,7 @@ Migrations: `server/migrations/*.js`
 | --- | --- | --- |
 | Musician | ayo@example.com | password123 |
 | Organizer | chidi@example.com | password123 |
+| Admin | admin@example.com | password123 |
 
 ## Project structure
 
@@ -149,5 +154,17 @@ Migrations: `server/migrations/*.js`
 | GET | /api/messages/threads | JWT | List conversations |
 | GET | /api/messages/with/:userId | JWT | Read a conversation |
 | POST | /api/messages/with/:userId | JWT | Send a message |
+| GET | /api/musicians/:id/availability | — | Musician availability |
+| POST | /api/musicians/:id/availability | musician | Add availability block |
+| DELETE | /api/availability/:id | musician | Remove availability block |
+| GET | /api/musicians/:id/demos | — | List audio/video demos |
+| POST | /api/musicians/:id/demos | musician | Add a demo |
+| DELETE | /api/musicians/:id/demos/:demoId | musician | Remove a demo |
+| POST | /api/reports | JWT | Report a user/gig/review/message |
+| GET | /api/admin/reports | admin | List reports |
+| PUT | /api/admin/reports/:id | admin | Resolve/dismiss report |
+| GET | /api/admin/users | admin | List all users |
+| POST | /api/admin/users/:id/block | admin | Block a user |
+| POST | /api/admin/users/:id/unblock | admin | Unblock a user |
 | GET | /api/notifications | JWT | List notifications |
 | POST | /api/notifications/read | JWT | Mark read |

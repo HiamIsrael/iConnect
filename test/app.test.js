@@ -168,6 +168,79 @@ describe('iConnect API', () => {
     expect(senderThreads.body.threads[0].unread).toBe(0);
   });
 
+  it('lets musicians manage availability and demos', async () => {
+    const musician = tokenOf(await login('ayo@example.com'));
+
+    const start = new Date(Date.now() + 3 * 86400000).toISOString();
+    const end = new Date(Date.now() + 3 * 86400000 + 4 * 3600000).toISOString();
+    const avail = await request(app)
+      .post('/api/musicians/u_ayo/availability')
+      .set('Authorization', `Bearer ${musician}`)
+      .send({ title: 'Festival slots', startAt: start, endAt: end, status: 'available' });
+    expect(avail.status).toBe(201);
+
+    const list = await request(app).get('/api/musicians/u_ayo/availability');
+    expect(list.body.availability.length).toBe(1);
+
+    const demo = await request(app)
+      .post('/api/musicians/u_ayo/demos')
+      .set('Authorization', `Bearer ${musician}`)
+      .send({ type: 'audio', title: 'Live solo', url: '/uploads/demo.mp3' });
+    expect(demo.status).toBe(201);
+
+    const demos = await request(app).get('/api/musicians/u_ayo/demos');
+    expect(demos.body.demos.length).toBe(1);
+  });
+
+  it('allows reports and admin moderation including blocking users', async () => {
+    const reporter = tokenOf(await login('grace@example.com'));
+    const admin = tokenOf(await login('admin@example.com'));
+
+    const report = await request(app)
+      .post('/api/reports')
+      .set('Authorization', `Bearer ${reporter}`)
+      .send({ targetType: 'user', targetId: 'u_tunde', reason: 'Fake profile', details: 'Test report' });
+    expect(report.status).toBe(201);
+
+    const reports = await request(app).get('/api/admin/reports').set('Authorization', `Bearer ${admin}`);
+    expect(reports.body.reports.length).toBe(1);
+
+    const resolve = await request(app)
+      .put(`/api/admin/reports/${report.body.report.id}`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ status: 'resolved' });
+    expect(resolve.body.report.status).toBe('resolved');
+
+    const block = await request(app).post('/api/admin/users/u_tunde/block').set('Authorization', `Bearer ${admin}`);
+    expect(block.body.user.blocked).toBe(true);
+
+    const blockedLogin = await login('tunde@example.com');
+    expect(blockedLogin.status).toBe(403);
+
+    const unblock = await request(app).post('/api/admin/users/u_tunde/unblock').set('Authorization', `Bearer ${admin}`);
+    expect(unblock.body.user.blocked).toBe(false);
+  });
+
+  it('captures booking terms and deposit on a new gig', async () => {
+    const organizer = tokenOf(await login('chidi@example.com'));
+    const created = await request(app)
+      .post('/api/gigs')
+      .set('Authorization', `Bearer ${organizer}`)
+      .send({
+        title: 'Deposit Gig',
+        venue: 'Test Hall',
+        location: 'Lagos',
+        date: '2026-12-20',
+        fee: { amount: 100000, currency: 'NGN' },
+        contractTerms: '4-hour set',
+        cancellationPolicy: '50% refund within 7 days',
+        depositPercent: 25,
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.gig.contractTerms).toBe('4-hour set');
+    expect(created.body.gig.depositPercent).toBe(25);
+  });
+
   it('supports password reset', async () => {
     const forgot = await request(app).post('/api/auth/forgot-password').send({ email: 'ayo@example.com' });
     expect(forgot.status).toBe(200);

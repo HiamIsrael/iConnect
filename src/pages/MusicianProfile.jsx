@@ -3,8 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import Avatar from '../components/Avatar';
 import StatusBadge from '../components/StatusBadge';
+import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
-import { formatMoney, timeAgo } from '../lib';
+import { formatDate, formatMoney, timeAgo } from '../lib';
 
 export default function MusicianProfile() {
   const { id } = useParams();
@@ -12,19 +13,44 @@ export default function MusicianProfile() {
   const [musician, setMusician] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [average, setAverage] = useState(null);
+  const [availability, setAvailability] = useState([]);
+  const [demos, setDemos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [details, setDetails] = useState('');
+  const [savingReport, setSavingReport] = useState(false);
+  const [reportMsg, setReportMsg] = useState(null);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.get(`/musicians/${id}`), api.get(`/reviews/user/${id}`)])
-      .then(([data, rev]) => {
+    Promise.all([api.get(`/musicians/${id}`), api.get(`/reviews/user/${id}`), api.get(`/musicians/${id}/availability`), api.get(`/musicians/${id}/demos`)])
+      .then(([data, rev, avail, dem]) => {
         setMusician(data.musician);
         setReviews(rev.reviews || []);
         setAverage(rev.average);
+        setAvailability(avail.availability || []);
+        setDemos(dem.demos || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
+
+  async function submitReport(e) {
+    e.preventDefault();
+    setSavingReport(true);
+    setReportMsg(null);
+    try {
+      await api.post('/reports', { targetType: 'user', targetId: id, reason, details });
+      setReportOpen(false);
+      setReason('');
+      setDetails('');
+    } catch (err) {
+      setReportMsg({ type: 'error', text: err.message });
+    } finally {
+      setSavingReport(false);
+    }
+  }
 
   if (loading) return <div className="page container"><div className="loader">Loading profile…</div></div>;
   if (!musician) {
@@ -101,11 +127,72 @@ export default function MusicianProfile() {
           {user && user.id !== musician.id && (
             <Link to={`/messages?to=${musician.id}`} className="btn block" style={{ marginTop: 10 }}>💬 Message</Link>
           )}
+          {user && user.id !== musician.id && (
+            <button className="btn ghost block" style={{ marginTop: 10, color: 'var(--danger)' }} onClick={() => setReportOpen(true)}>Report profile</button>
+          )}
           <div className="alert success" style={{ marginTop: 14 }}>
             💡 Pro tip: organizers reach musicians by posting a gig with clear details.
           </div>
         </div>
       </div>
+
+      {demos.length > 0 && (
+        <div className="detail-card" style={{ marginTop: 24 }}>
+          <h3 className="section-title">Audio & video demos</h3>
+          <div className="grid grid-2">
+            {demos.map((d) => (
+              <div key={d.id} className="card" style={{ background: 'var(--bg-soft)' }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>{d.title || d.type}</div>
+                {d.type === 'audio'
+                  ? <audio controls src={d.url} style={{ width: '100%' }} />
+                  : <a href={d.url} target="_blank" rel="noreferrer" className="btn small">▶ Play / open video</a>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {availability.length > 0 && (
+        <div className="detail-card" style={{ marginTop: 24 }}>
+          <h3 className="section-title">Upcoming availability</h3>
+          <div className="grid">
+            {availability.map((b) => (
+              <div key={b.id} className="card" style={{ background: 'var(--bg-soft)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <div>
+                    <strong>{b.title || (b.status === 'available' ? 'Available' : 'Unavailable')}</strong>
+                    <div className="muted">{formatDate(b.startAt)} · {new Date(b.startAt).toTimeString().slice(0, 5)} → {new Date(b.endAt).toTimeString().slice(0, 5)}</div>
+                  </div>
+                  <span className={`badge ${b.status === 'unavailable' ? 'brand' : 'success'}`}>{b.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <Modal open={reportOpen} onClose={() => setReportOpen(false)} title="Report this profile">
+        <form className="form-stack" onSubmit={submitReport}>
+          <label>Reason
+            <select value={reason} onChange={(e) => setReason(e.target.value)} required>
+              <option value="">Choose a reason…</option>
+              <option value="Spam or scam">Spam or scam</option>
+              <option value="Fake profile">Fake profile</option>
+              <option value="Inappropriate content">Inappropriate content</option>
+              <option value="Misrepresentation">Misrepresentation</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>Details
+            <textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Explain what is wrong (optional)." />
+          </label>
+          {reportMsg && <div className={`alert ${reportMsg.type}`}>{reportMsg.text}</div>}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" className="btn" onClick={() => setReportOpen(false)}>Cancel</button>
+            <button className="btn primary" disabled={savingReport}>{savingReport ? 'Sending…' : 'Submit report'}</button>
+          </div>
+        </form>
+      </Modal>
 
       {(reviews.length > 0 || average) && (
         <div className="detail-card" id="reviews" style={{ marginTop: 24 }}>

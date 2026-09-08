@@ -171,10 +171,16 @@ export default function Dashboard() {
 
                   {user.role === 'musician' && app.status === 'accepted' && app.gig?.fee?.amount > 0 && (
                     <div style={{ marginTop: 14, borderTop: '1px solid var(--line-soft)', paddingTop: 14 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                        <span className="muted">Booking fee</span>
-                        <strong>{formatMoney(app.gig.fee.amount, app.gig.fee.currency)}</strong>
-                      </div>
+                      {(() => {
+                        const pct = Number(app.gig.depositPercent) || 0;
+                        const amount = pct > 0 ? Math.round((app.gig.fee.amount * pct) / 100) : app.gig.fee.amount;
+                        return (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                            <span className="muted">{pct > 0 ? `Booking deposit (${pct}%)` : 'Booking fee'}</span>
+                            <strong>{formatMoney(amount, app.gig.fee.currency)}</strong>
+                          </div>
+                        );
+                      })()}
                       {payment?.status === 'paid' ? (
                         <div className="alert success" style={{ marginBottom: 0 }}>✅ Booking fee paid (ref {payment.reference})</div>
                       ) : payment?.status === 'pending' ? (
@@ -253,6 +259,9 @@ function CreateGigModal({ open, onClose, onCreated }) {
     genre: '',
     tags: '',
     requirements: '',
+    contractTerms: '',
+    cancellationPolicy: '',
+    depositPercent: 0,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -280,11 +289,14 @@ function CreateGigModal({ open, onClose, onCreated }) {
         genre: form.genre,
         tags: form.tags.split(',').map((s) => s.trim()).filter(Boolean),
         requirements: form.requirements,
+        contractTerms: form.contractTerms,
+        cancellationPolicy: form.cancellationPolicy,
+        depositPercent: Number(form.depositPercent) || 0,
       });
       setForm({
         title: '', description: '', type: 'Club / Pub', venue: '', location: '', date: '',
         startTime: '18:00', endTime: '22:00', feeAmount: 0, feeCurrency: 'NGN', capacity: 1,
-        genre: '', tags: '', requirements: '',
+        genre: '', tags: '', requirements: '', contractTerms: '', cancellationPolicy: '', depositPercent: 0,
       });
       onCreated();
     } catch (err) {
@@ -345,6 +357,15 @@ function CreateGigModal({ open, onClose, onCreated }) {
         </div>
 
         <label>Requirements <textarea value={form.requirements} onChange={update('requirements')} /></label>
+
+        <label>Deposit (%) <input type="number" min="0" max="100" value={form.depositPercent} onChange={update('depositPercent')} /></label>
+
+        <label>Contract terms
+          <textarea value={form.contractTerms} onChange={update('contractTerms')} placeholder="Scope of services, deliverables, usage rights…" />
+        </label>
+        <label>Cancellation policy
+          <textarea value={form.cancellationPolicy} onChange={update('cancellationPolicy')} placeholder="e.g. 50% refund if cancelled 7 days before the gig." />
+        </label>
 
         {error && <div className="alert error">{error}</div>}
         <div style={{ display: 'flex', gap: 10 }}>
