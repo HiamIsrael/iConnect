@@ -15,6 +15,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [reviewApp, setReviewApp] = useState(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
 
   const load = useCallback(() => {
     const tasks = [api.get('/applications/my')];
@@ -59,6 +63,22 @@ export default function Dashboard() {
       setRefreshKey((k) => k + 1);
     } catch {
       // ignore
+    }
+  }
+
+  async function submitReview(e) {
+    e.preventDefault();
+    if (!reviewApp) return;
+    setSavingReview(true);
+    try {
+      await api.post(`/applications/${reviewApp.id}/review`, { rating, comment });
+      setReviewApp(null);
+      setComment('');
+      setRefreshKey((k) => k + 1);
+    } catch {
+      // ignore
+    } finally {
+      setSavingReview(false);
     }
   }
 
@@ -167,6 +187,18 @@ export default function Dashboard() {
                       )}
                     </div>
                   )}
+
+                  {app.status === 'accepted' && (
+                    <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      {user.role === 'musician' && app.gig?.hostId && (
+                        <Link to={`/messages?to=${app.gig.hostId}`} className="btn small">💬 Message organizer</Link>
+                      )}
+                      {user.role === 'organizer' && app.musician?.id && (
+                        <Link to={`/messages?to=${app.musician.id}`} className="btn small">💬 Message musician</Link>
+                      )}
+                      <button className="btn small" onClick={() => { setReviewApp(app); setRating(5); setComment(''); }}>⭐ Review</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -177,6 +209,30 @@ export default function Dashboard() {
       {user.role === 'organizer' && (
         <CreateGigModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => { setCreateOpen(false); setRefreshKey((k) => k + 1); }} />
       )}
+
+      <Modal open={!!reviewApp} onClose={() => setReviewApp(null)} title="Leave a review">
+        <p className="muted">
+          How was the booking? Rate {user.role === 'musician' ? 'the organizer' : 'the musician'} for “{reviewApp?.gig?.title || ''}”.
+        </p>
+        <form className="form-stack" onSubmit={submitReview}>
+          <label>Rating
+            <select value={rating} onChange={(e) => setRating(Number(e.target.value))}>
+              <option value={5}>5 — Excellent</option>
+              <option value={4}>4 — Great</option>
+              <option value={3}>3 — Good</option>
+              <option value={2}>2 — Okay</option>
+              <option value={1}>1 — Poor</option>
+            </select>
+          </label>
+          <label>Comment (optional)
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Tell others about this booking." />
+          </label>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" className="btn" onClick={() => setReviewApp(null)}>Cancel</button>
+            <button className="btn primary" disabled={savingReview}>{savingReview ? 'Posting…' : 'Post review'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

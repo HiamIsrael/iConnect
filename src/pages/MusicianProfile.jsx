@@ -3,17 +3,25 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import Avatar from '../components/Avatar';
 import StatusBadge from '../components/StatusBadge';
-import { formatMoney } from '../lib';
+import { useAuth } from '../context/AuthContext';
+import { formatMoney, timeAgo } from '../lib';
 
 export default function MusicianProfile() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [musician, setMusician] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [average, setAverage] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/musicians/${id}`)
-      .then((data) => setMusician(data.musician))
+    Promise.all([api.get(`/musicians/${id}`), api.get(`/reviews/user/${id}`)])
+      .then(([data, rev]) => {
+        setMusician(data.musician);
+        setReviews(rev.reviews || []);
+        setAverage(rev.average);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
@@ -90,11 +98,35 @@ export default function MusicianProfile() {
           )}
 
           <Link to="/gigs" className="btn primary block" style={{ marginTop: 14 }}>Browse open gigs</Link>
+          {user && user.id !== musician.id && (
+            <Link to={`/messages?to=${musician.id}`} className="btn block" style={{ marginTop: 10 }}>💬 Message</Link>
+          )}
           <div className="alert success" style={{ marginTop: 14 }}>
             💡 Pro tip: organizers reach musicians by posting a gig with clear details.
           </div>
         </div>
       </div>
+
+      {(reviews.length > 0 || average) && (
+        <div className="detail-card" id="reviews" style={{ marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 }}>
+            <h3 className="section-title" style={{ marginBottom: 0 }}>Reviews</h3>
+            {average && <span className="badge brand">⭐ {average} / 5</span>}
+          </div>
+          <div className="grid" style={{ marginTop: 18 }}>
+            {reviews.map((r) => (
+              <div key={r.id} className="card" style={{ background: 'var(--bg-soft)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                  <strong>{'⭐'.repeat(r.rating)}</strong>
+                  <span className="faint" style={{ fontSize: 13 }}>{timeAgo(r.createdAt)}</span>
+                </div>
+                <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>by {r.reviewer?.name || 'Someone'}</div>
+                {r.comment && <p style={{ marginBottom: 0 }}>{r.comment}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

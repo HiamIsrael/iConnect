@@ -44,6 +44,7 @@ export default function Login() {
 
           <p className="muted" style={{ marginTop: 18, fontSize: 14 }}>
             New here? <Link to="/signup" style={{ color: 'var(--accent)' }}>Create an account</Link>
+            {' · '}<Link to="/forgot-password" style={{ color: 'var(--accent)' }}>Forgot password?</Link>
           </p>
 
           <div className="alert" style={{ marginTop: 12, marginBottom: 0 }}>

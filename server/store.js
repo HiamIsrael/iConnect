@@ -1,23 +1,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import knex from 'knex';
 import { seedData } from './seed.js';
+import { config } from './config.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
+const MIGRATIONS_DIR = path.join(config.root, 'server', 'migrations');
+const DATA_DIR = config.dataDir;
 const MAX_FILE_SIZE_MB = 20;
 
 export const uid = (prefix) => `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
 
 export const db = knex(
-  process.env.DATABASE_URL
-    ? { client: 'pg', connection: process.env.DATABASE_URL }
+  config.databaseUrl
+    ? { client: 'pg', connection: config.databaseUrl }
     : {
         client: 'better-sqlite3',
-        connection: { filename: path.join(DATA_DIR, 'iconnect.sqlite') },
+        connection: { filename: config.sqliteFile },
         useNullAsDefault: true,
         pool: { min: 1, max: 1 },
       },
@@ -40,8 +39,8 @@ function parseSocials(row) {
 
 export async function initDb() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(config.uploadsDir, { recursive: true });
   if (db.client.config.client === 'better-sqlite3') {
-    // Enable foreign keys for cascade behaviour (single connection pool).
     try {
       await db.raw('PRAGMA foreign_keys = ON');
     } catch {
@@ -49,6 +48,18 @@ export async function initDb() {
     }
   }
   await db.migrate.latest({ directory: MIGRATIONS_DIR });
+  await seedIfEmpty();
+}
+
+export async function resetDbForTests() {
+  if (db.client.config.client !== 'better-sqlite3') {
+    throw new Error('resetDbForTests only supports SQLite.');
+  }
+  await db.raw('PRAGMA foreign_keys = OFF');
+  for (const table of ['notifications', 'payments', 'messages', 'reviews', 'password_reset_tokens', 'applications', 'gig_tags', 'gigs', 'user_tags', 'user_instruments', 'users']) {
+    await db(table).del();
+  }
+  await db.raw('PRAGMA foreign_keys = ON');
   await seedIfEmpty();
 }
 
@@ -79,10 +90,7 @@ export async function seedIfEmpty() {
       created_at: iso(user.createdAt) || now,
       updated_at: now,
     });
-    const instruments = (user.instruments || []).map((instrument) => ({
-      user_id: user.id,
-      instrument,
-    }));
+    const instruments = (user.instruments || []).map((instrument) => ({ user_id: user.id, instrument }));
     const tags = (user.tags || []).map((tag) => ({ user_id: user.id, tag }));
     if (instruments.length) await db('user_instruments').insert(instruments);
     if (tags.length) await db('user_tags').insert(tags);
@@ -227,6 +235,7 @@ export async function updateUser(id, patch) {
   if (patch.photoUrl !== undefined) base.photo_url = patch.photoUrl;
   if (patch.epkUrl !== undefined) base.epk_url = patch.epkUrl;
   if (patch.socials !== undefined) base.socials = patch.socials ? JSON.stringify(patch.socials) : null;
+  if (patch.passwordHash !== undefined) base.password_hash = patch.passwordHash;
   if (patch.rate) {
     base.rate_currency = patch.rate.currency || 'NGN';
     base.rate_amount = Number(patch.rate.amount) || 0;
@@ -248,6 +257,10 @@ export async function updateUser(id, patch) {
   return getUserById(id);
 }
 
+export async function updatePassword(id, passwordHash) {
+  await db('users').where({ id }).update({ password_hash: passwordHash, updated_at: new Date().toISOString() });
+}
+
 export async function listMusicians(filters = {}) {
   const { q, genre, location, instrument, availability } = filters;
   const query = String(q || '').trim().toLowerCase();
@@ -260,9 +273,6 @@ export async function listMusicians(filters = {}) {
     .where({ role: 'musician' })
     .orderBy('created_at', 'desc');
 
-  if (query) {
-    rows = rows.filter((r) => `${r.name} ${r.title} ${r.genre} ${r.location}`.toLowerCase().includes(query));
-  }
   if (genreQuery) rows = rows.filter((r) => String(r.genre || '').toLowerCase().includes(genreQuery));
   if (locationQuery) rows = rows.filter((r) => String(r.location || '').toLowerCase().includes(locationQuery));
   if (availabilityQuery) rows = rows.filter((r) => String(r.availability || '') === availabilityQuery);
@@ -575,6 +585,164 @@ function mapPayment(row) {
     createdAt: iso(row.created_at),
     paidAt: iso(row.paid_at),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Password reset helpers
+// ---------------------------------------------------------------------------
+export function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+export async function createPasswordResetToken(userId, ttlMinutes = 60) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const id = uid('rt');
+  await db('password_reset_tokens').insert({
+    id,
+    user_id: userId,
+    token_hash: hashToken(token),
+    expires_at: new Date(Date.now() + ttlMinutes * 60000).toISOString(),
+  });
+  return token;
+}
+
+export async function findUserByPasswordResetToken(token) {
+  const row = await db('password_reset_tokens').where({ token_hash: hashToken(token) }).first();
+  if (!row) return null;
+  if (new Date(row.expires_at).getTime() < Date.now()) return null;
+  return getUserById(row.user_id);
+}
+
+export async function consumePasswordResetToken(token) {
+  await db('password_reset_tokens').where({ token_hash: hashToken(token) }).del();
+}
+
+// ---------------------------------------------------------------------------
+// Review helpers
+// ---------------------------------------------------------------------------
+export function mapReview(row, reviewer = null) {
+  return {
+    id: row.id,
+    applicationId: row.application_id,
+    gigId: row.gig_id,
+    reviewerId: row.reviewer_id,
+    revieweeId: row.reviewee_id,
+    rating: row.rating,
+    comment: row.comment || '',
+    reviewer,
+    createdAt: iso(row.created_at),
+  };
+}
+
+export async function createReview({ applicationId, gigId, reviewerId, revieweeId, rating, comment }) {
+  const id = uid('rv');
+  await db('reviews').insert({
+    id,
+    application_id: applicationId,
+    gig_id: gigId,
+    reviewer_id: reviewerId,
+    reviewee_id: revieweeId,
+    rating: Math.max(1, Math.min(5, Number(rating) || 5)),
+    comment: String(comment || '').trim().slice(0, 2000),
+  });
+  return getReviewById(id);
+}
+
+export async function getReviewById(id) {
+  const row = await db('reviews').where({ id }).first();
+  if (!row) return null;
+  const reviewer = await getUserById(row.reviewer_id);
+  return mapReview(row, reviewer ? { id: reviewer.id, name: reviewer.name, role: reviewer.role } : null);
+}
+
+export async function getReviewsForUser(userId) {
+  const rows = await db('reviews').where({ reviewee_id: userId }).orderBy('created_at', 'desc');
+  const reviews = [];
+  for (const row of rows) reviews.push(await getReviewById(row.id));
+  const average = reviews.length
+    ? Number((reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1))
+    : null;
+  return { reviews, average, count: reviews.length };
+}
+
+export async function getReviewForApplication(applicationId, reviewerId) {
+  const row = await db('reviews').where({ application_id: applicationId, reviewer_id: reviewerId }).first();
+  if (!row) return null;
+  return getReviewById(row.id);
+}
+
+// ---------------------------------------------------------------------------
+// Message helpers
+// ---------------------------------------------------------------------------
+export function threadIdFor(a, b) {
+  return [String(a), String(b)].sort().join('::');
+}
+
+export function mapMessage(row, user = null) {
+  return {
+    id: row.id,
+    threadId: row.thread_id,
+    senderId: row.sender_id,
+    receiverId: row.sender_id === row.user_a_id ? row.user_b_id : row.user_a_id,
+    body: row.body,
+    read: Boolean(row.read_at),
+    user,
+    createdAt: iso(row.created_at),
+  };
+}
+
+export async function listThreads(userId) {
+  const rows = await db('messages')
+    .where((builder) => builder.where('user_a_id', userId).orWhere('user_b_id', userId))
+    .orderBy('created_at', 'desc');
+  const byThread = new Map();
+  for (const row of rows) {
+    if (!byThread.has(row.thread_id)) byThread.set(row.thread_id, row);
+  }
+  const threads = [];
+  for (const row of byThread.values()) {
+    const otherId = row.user_a_id === userId ? row.user_b_id : row.user_a_id;
+    const other = await getUserById(otherId);
+    const unreadCount = await db('messages')
+      .where({ thread_id: row.thread_id, sender_id: otherId })
+      .whereNull('read_at')
+      .count({ c: '*' })
+      .first();
+    threads.push({
+      id: row.thread_id,
+      user: other ? { id: other.id, name: other.name, role: other.role, photoUrl: other.photoUrl } : null,
+      lastMessage: mapMessage(row),
+      unread: Number(unreadCount.c) || 0,
+    });
+  }
+  return threads;
+}
+
+export async function listMessagesWith(userId, otherId) {
+  const thread = threadIdFor(userId, otherId);
+  await db('messages')
+    .where({ thread_id: thread, sender_id: otherId })
+    .whereNull('read_at')
+    .update({ read_at: new Date().toISOString() });
+  const rows = await db('messages').where({ thread_id: thread }).orderBy('created_at', 'asc');
+  const other = await getUserById(otherId);
+  return rows.map((r) => mapMessage(r, other ? { id: other.id, name: other.name, role: other.role } : null));
+}
+
+export async function sendMessage({ senderId, receiverId, body }) {
+  const id = uid('m');
+  const thread = threadIdFor(senderId, receiverId);
+  const [a, b] = [String(senderId), String(receiverId)].sort();
+  await db('messages').insert({
+    id,
+    thread_id: thread,
+    user_a_id: a,
+    user_b_id: b,
+    sender_id: senderId,
+    body: String(body || '').trim().slice(0, 2000),
+  });
+  const row = await db('messages').where({ id }).first();
+  return mapMessage(row);
 }
 
 export { MAX_FILE_SIZE_MB };

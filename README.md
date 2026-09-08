@@ -4,7 +4,8 @@
 
 iConnect is a full-stack web app where musicians create profiles, discover and
 apply to gigs, and event organizers post and manage bookings — with photo/EPK
-uploads, a real database, notifications and booking payments.
+uploads, a real database, direct messaging, reviews, notifications, and booking
+payments.
 
 ## Features
 
@@ -12,18 +13,25 @@ uploads, a real database, notifications and booking payments.
 - Browse & search musicians and gigs
 - Organizer dashboard: post gigs, review and respond to applications
 - Musician dashboard: track applications, pay the booking fee
-- In-app notifications for applications and payments
-- Photo / EPK file uploads (stored locally under `data/uploads`)
+- Direct messaging between musicians and organizers
+- Reviews & ratings after an accepted booking
+- In-app notifications for applications, messages, reviews and payments
+- Password reset / forgot-password flow (console email in dev; pluggable providers)
 - Auth (JWT + bcrypt), role-based access (musician / organizer)
-- Database-backed with migrations and a seed script
+- Security hardening: Helmet, rate limiting, configurable env
+- Database-backed with migrations and a seed script (SQLite default / Postgres via `DATABASE_URL`)
+- Automated integration tests (Vitest + Supertest)
+- Docker + GitHub Actions CI
 
 ## Stack
 
 - **Frontend:** React 18 + Vite, React Router, plain CSS (no UI kit)
-- **Backend:** Node.js + Express, Multer for uploads
+- **Backend:** Node.js + Express, Multer for uploads, Helmet + express-rate-limit
 - **Database:** Knex + SQLite (`better-sqlite3`) by default; set `DATABASE_URL` (PostgreSQL) to use Postgres
 - **Payments:** pluggable `mock` provider (records checkout + confirmation events)
 - **Auth:** JWT + bcrypt
+- **Email:** console provider by default; configure `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` to send real email
+- **Tests:** Vitest + Supertest
 
 ## Getting started
 
@@ -32,27 +40,51 @@ npm install
 npm run dev
 ```
 
-The app runs at:
-
 - Frontend (Vite dev server): http://localhost:5173
 - API (Express): http://localhost:3000/api
-- Vite proxies `/api` to the Express server, so the frontend uses **relative `/api` paths only**.
+- Vite proxies `/api` to Express, so browser code uses **relative `/api` paths only**.
 
-For a production-style single server:
+Production-style single server:
 
 ```bash
 npm run build
 npm start   # serves built UI + API on port 3000
 ```
 
+For Docker:
+
+```bash
+docker compose up --build
+```
+
+## Tests
+
+```bash
+npm test          # runs integration tests against an isolated SQLite DB
+npm run build     # production build
+```
+
 ## Database
 
-On first start, migrations run and seed data is created automatically.
+Migrations and seed data run automatically on first start.
 
-- Default: `data/iconnect.sqlite` (SQLite, zero config)
+- Default: `data/iconnect.sqlite` (zero config)
 - Postgres: set `DATABASE_URL=postgres://user:pass@host/db` before starting
 
-Schema: `server/migrations/*.js`
+Migrations: `server/migrations/*.js`
+
+## Configuration
+
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | API port (default `3000`) |
+| `HOST` | Bind address (default `0.0.0.0`) |
+| `JWT_SECRET` | JWT signing secret (change in production) |
+| `APP_URL` | Public base URL used in emails |
+| `ICONNECT_DB_FILE` | SQLite file path |
+| `DATABASE_URL` | Optional Postgres connection string |
+| `EMAIL_PROVIDER` | `console` (default) or `resend` |
+| `RESEND_API_KEY` | Resend API key for real email |
 
 ## Demo accounts / seed data
 
@@ -67,18 +99,26 @@ Schema: `server/migrations/*.js`
 .
 ├── package.json
 ├── vite.config.js
+├── vitest.config.js
+├── Dockerfile
+├── docker-compose.yml
+├── .github/workflows/ci.yml
 ├── index.html
 ├── src/                    # React frontend
 │   ├── api.js             # fetch wrapper + upload helper
 │   ├── App.jsx
 │   ├── pages/
 │   └── components/
-└── server/                 # Express backend
-    ├── index.js
-    ├── auth.js
-    ├── store.js            # Knex data layer
-    ├── seed.js
-    └── migrations/
+├── server/                 # Express backend
+│   ├── app.js             # app factory (also used by tests)
+│   ├── index.js           # server entrypoint
+│   ├── auth.js
+│   ├── config.js
+│   ├── notify.js          # pluggable email sender
+│   ├── store.js           # Knex data layer
+│   ├── seed.js
+│   └── migrations/
+└── test/                  # integration tests
 ```
 
 ## API summary
@@ -88,12 +128,13 @@ Schema: `server/migrations/*.js`
 | POST | /api/auth/signup | — | Create account |
 | POST | /api/auth/login | — | Log in |
 | GET | /api/auth/me | JWT | Current user |
+| POST | /api/auth/forgot-password | — | Send reset link |
+| POST | /api/auth/reset-password | — | Reset password |
 | GET | /api/musicians | — | Search musicians |
 | GET | /api/musicians/:id | — | Musician profile |
 | PUT | /api/musicians/:id | musician | Update profile |
 | POST | /api/uploads | JWT | Upload photo / EPK |
 | GET | /api/gigs | — | Search gigs |
-| GET | /api/gigs/:id | — | Gig details |
 | POST | /api/gigs | organizer | Post a gig |
 | PUT | /api/gigs/:id | organizer | Update gig |
 | DELETE | /api/gigs/:id | organizer | Delete gig |
@@ -101,8 +142,12 @@ Schema: `server/migrations/*.js`
 | GET | /api/applications/my | JWT | My applications |
 | PUT | /api/applications/:id | organizer | Accept / decline |
 | POST | /api/applications/:id/checkout | musician | Create booking payment |
-| POST | /api/payments/:id/confirm | JWT | Confirm mock payment |
+| POST | /api/payments/:id/confirm | JWT | Confirm payment |
 | GET | /api/payments/my | JWT | My payments |
+| GET | /api/reviews/user/:id | — | Reviews for a user |
+| POST | /api/applications/:id/review | JWT | Review an accepted booking |
+| GET | /api/messages/threads | JWT | List conversations |
+| GET | /api/messages/with/:userId | JWT | Read a conversation |
+| POST | /api/messages/with/:userId | JWT | Send a message |
 | GET | /api/notifications | JWT | List notifications |
 | POST | /api/notifications/read | JWT | Mark read |
-```

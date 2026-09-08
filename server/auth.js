@@ -1,8 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { getUserById } from './store.js';
+import { config } from './config.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'iconnect-dev-secret-change-me';
-const TOKEN_TTL = '7d';
+const JWT_SECRET = config.jwtSecret;
+const TOKEN_TTL = config.jwtTtl;
 
 export function signToken(user) {
   return jwt.sign(
