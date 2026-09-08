@@ -5,19 +5,45 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
-import { getDb, saveDb } from './db.js';
+import multer from 'multer';
+import {
+  initDb,
+  uid,
+  getUserById,
+  getUserByEmail,
+  createUser,
+  updateUser,
+  listMusicians,
+  getGigById,
+  listGigs,
+  createGig,
+  updateGig,
+  deleteGig,
+  createApplication,
+  getApplicationById,
+  updateApplicationStatus,
+  listApplicationsForUser,
+  createNotification,
+  listNotifications,
+  markNotificationsRead,
+  createPayment,
+  markPaymentPaid,
+  listPaymentsForUser,
+  MAX_FILE_SIZE_MB,
+} from './store.js';
 import { signToken, requireAuth, requireRole, publicUser } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 const DIST_DIR = path.join(__dirname, '..', 'dist');
+const UPLOADS_DIR = path.join(__dirname, '..', 'data', 'uploads');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const uid = (prefix) => `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -28,15 +54,8 @@ function normalizeText(value) {
 
 function toArray(value) {
   if (Array.isArray(value)) return value.map((v) => String(v).trim()).filter(Boolean);
-  if (typeof value === 'string') {
-    return value.split(',').map((v) => v.trim()).filter(Boolean);
-  }
+  if (typeof value === 'string') return value.split(',').map((v) => v.trim()).filter(Boolean);
   return [];
-}
-
-function publicGig(gig, db) {
-  const apps = db.applications.filter((a) => a.gigId === gig.id);
-  return { ...gig, applicationCount: apps.length };
 }
 
 function safeMusician(user) {
@@ -44,22 +63,35 @@ function safeMusician(user) {
   return rest;
 }
 
-function slugify(value) {
-  return normalizeText(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
+// Multer for photo/EPK uploads.
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase() || '.bin';
+    cb(null, `${Date.now()}_${crypto.randomUUID().slice(0, 8)}${ext}`);
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE_MB * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /^image\/(png|jpe?g|webp|gif)$|pdf|zip|audio\/(mpeg|wav|mp4)$/i;
+    if (allowed.test(file.mimetype)) return cb(null, true);
+    return cb(new Error('Unsupported file type. Use images, PDF, ZIP or audio.'));
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, name: 'iConnect', version: '0.1.0' });
+  res.json({ ok: true, name: 'iConnect', version: '0.2.0', storage: process.env.DATABASE_URL ? 'postgres' : 'sqlite' });
 });
 
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
-app.post('/api/auth/signup', (req, res) => {
-  const db = getDb();
+app.post('/api/auth/signup', async (req, res) => {
   const { name, email, password, role } = req.body || {};
 
   if (!name || !email || !password) {
@@ -73,12 +105,10 @@ app.post('/api/auth/signup', (req, res) => {
   }
 
   const normalizedEmail = normalizeText(email);
-  if (db.users.some((u) => normalizeText(u.email) === normalizedEmail)) {
-    return res.status(409).json({ error: 'An account with this email already exists.' });
-  }
+  const existing = await getUserByEmail(normalizedEmail);
+  if (existing) return res.status(409).json({ error: 'An account with this email already exists.' });
 
-  const user = {
-    id: uid('u'),
+  const user = await createUser({
     role: role || 'musician',
     name: String(name).trim(),
     email: normalizedEmail,
@@ -87,26 +117,22 @@ app.post('/api/auth/signup', (req, res) => {
     bio: '',
     location: '',
     genre: '',
-    instruments: role === 'musician' ? [] : undefined,
-    yearsExperience: role === 'musician' ? 0 : undefined,
-    rate: role === 'musician' ? { currency: 'NGN', amount: 0, unit: 'per gig' } : undefined,
-    availability: role === 'musician' ? 'open' : undefined,
+    instruments: role === 'musician' ? [] : [],
     tags: [],
+    yearsExperience: 0,
+    availability: 'open',
+    rate: { currency: 'NGN', amount: 0, unit: 'per gig' },
     roleLabel: role === 'organizer' ? 'Organizer' : undefined,
-    createdAt: new Date().toISOString(),
-  };
+  });
 
-  db.users.push(user);
-  saveDb();
   return res.status(201).json({ token: signToken(user), user: publicUser(user) });
 });
 
-app.post('/api/auth/login', (req, res) => {
-  const db = getDb();
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
 
-  const user = db.users.find((u) => normalizeText(u.email) === normalizeText(email));
+  const user = await getUserByEmail(normalizeText(email));
   if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
@@ -114,260 +140,172 @@ app.post('/api/auth/login', (req, res) => {
   return res.json({ token: signToken(user), user: publicUser(user) });
 });
 
-app.get('/api/auth/me', requireAuth, (req, res) => {
-  res.json({ user: publicUser(req.user) });
-});
+app.get('/api/auth/me', requireAuth, (req, res) => res.json({ user: publicUser(req.user) }));
 
 // ---------------------------------------------------------------------------
 // Musicians
 // ---------------------------------------------------------------------------
-app.get('/api/musicians', (req, res) => {
-  const db = getDb();
-  const { q, genre, location, instrument, availability } = req.query;
-  const query = normalizeText(q);
-  const genreQuery = normalizeText(genre);
-  const locationQuery = normalizeText(location);
-  const instrumentQuery = normalizeText(instrument);
-  const availabilityQuery = normalizeText(availability);
-
-  let musicians = db.users.filter((u) => u.role === 'musician');
-
-  if (query) {
-    musicians = musicians.filter((m) =>
-      `${m.name} ${m.title} ${m.genre} ${m.location} ${(m.tags || []).join(' ')} ${(m.instruments || []).join(' ')}`
-        .toLowerCase()
-        .includes(query),
-    );
-  }
-  if (genreQuery) {
-    musicians = musicians.filter((m) => normalizeText(m.genre).includes(genreQuery));
-  }
-  if (locationQuery) {
-    musicians = musicians.filter((m) => normalizeText(m.location).includes(locationQuery));
-  }
-  if (instrumentQuery) {
-    musicians = musicians.filter((m) => (m.instruments || []).some((i) => normalizeText(i).includes(instrumentQuery)));
-  }
-  if (availabilityQuery) {
-    musicians = musicians.filter((m) => normalizeText(m.availability) === availabilityQuery);
-  }
-
-  musicians.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+app.get('/api/musicians', async (req, res) => {
+  const musicians = await listMusicians({
+    q: req.query.q,
+    genre: req.query.genre,
+    location: req.query.location,
+    instrument: req.query.instrument,
+    availability: req.query.availability,
+  });
   res.json({ musicians: musicians.map(safeMusician) });
 });
 
-app.get('/api/musicians/:id', (req, res) => {
-  const db = getDb();
-  const musician = db.users.find((u) => u.id === req.params.id && u.role === 'musician');
-  if (!musician) return res.status(404).json({ error: 'Musician not found.' });
+app.get('/api/musicians/:id', async (req, res) => {
+  const musician = await getUserById(req.params.id);
+  if (!musician || musician.role !== 'musician') return res.status(404).json({ error: 'Musician not found.' });
   res.json({ musician: safeMusician(musician) });
 });
 
-app.put('/api/musicians/:id', requireAuth, requireRole('musician'), (req, res) => {
-  const db = getDb();
-  const musician = db.users.find((u) => u.id === req.params.id);
-  if (!musician || musician.id !== req.user.id || musician.role !== 'musician') {
-    return res.status(404).json({ error: 'Musician profile not found.' });
-  }
+app.put('/api/musicians/:id', requireAuth, requireRole('musician'), async (req, res) => {
+  if (req.params.id !== req.user.id) return res.status(404).json({ error: 'Musician profile not found.' });
 
-  const allowed = ['name', 'title', 'bio', 'location', 'genre', 'yearsExperience', 'availability'];
-  for (const field of allowed) {
-    if (req.body[field] !== undefined) musician[field] = req.body[field];
-  }
-  musician.instruments = toArray(req.body.instruments ?? musician.instruments ?? []);
-  musician.tags = toArray(req.body.tags ?? musician.tags ?? []);
+  const patch = {
+    name: req.body.name,
+    title: req.body.title,
+    bio: req.body.bio,
+    location: req.body.location,
+    genre: req.body.genre,
+    yearsExperience: req.body.yearsExperience,
+    availability: req.body.availability,
+    instruments: req.body.instruments !== undefined ? toArray(req.body.instruments) : undefined,
+    tags: req.body.tags !== undefined ? toArray(req.body.tags) : undefined,
+    rate: req.body.rate,
+    photoUrl: req.body.photoUrl,
+    epkUrl: req.body.epkUrl,
+    socials: req.body.socials,
+  };
+  for (const key of Object.keys(patch)) if (patch[key] === undefined) delete patch[key];
 
-  if (req.body.rate) {
-    musician.rate = {
-      currency: req.body.rate.currency || 'NGN',
-      amount: Number(req.body.rate.amount) || 0,
-      unit: req.body.rate.unit || 'per gig',
-    };
-  }
-
-  musician.updatedAt = new Date().toISOString();
-  saveDb();
+  const musician = await updateUser(req.user.id, patch);
   res.json({ musician: safeMusician(musician) });
 });
+
+// ---------------------------------------------------------------------------
+// Uploads (photo / EPK)
+// ---------------------------------------------------------------------------
+app.post('/api/uploads', requireAuth, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
+  const kind = req.body.kind === 'epk' ? 'epk' : 'photo';
+  res.status(201).json({ url: `/uploads/${req.file.filename}`, kind });
+});
+
+// Serve uploaded files.
+app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '1d' }));
 
 // ---------------------------------------------------------------------------
 // Gigs
 // ---------------------------------------------------------------------------
-app.get('/api/gigs', (req, res) => {
-  const db = getDb();
-  const { q, type, genre, location, status, date } = req.query;
-  const query = normalizeText(q);
-  const typeQuery = normalizeText(type);
-  const genreQuery = normalizeText(genre);
-  const locationQuery = normalizeText(location);
-  const statusQuery = normalizeText(status);
-  const dateQuery = normalizeText(date);
-
-  let gigs = [...db.gigs];
-
-  if (query) {
-    gigs = gigs.filter((g) =>
-      `${g.title} ${g.description} ${g.type} ${g.venue} ${g.location} ${g.genre} ${(g.tags || []).join(' ')}`
-        .toLowerCase()
-        .includes(query),
-    );
-  }
-  if (typeQuery) gigs = gigs.filter((g) => normalizeText(g.type).includes(typeQuery));
-  if (genreQuery) gigs = gigs.filter((g) => normalizeText(g.genre).includes(genreQuery));
-  if (locationQuery) gigs = gigs.filter((g) => normalizeText(g.location).includes(locationQuery));
-  if (statusQuery) gigs = gigs.filter((g) => normalizeText(g.status) === statusQuery);
-  if (dateQuery) gigs = gigs.filter((g) => {
-    const d = new Date(g.date).toISOString().slice(0, 10);
-    return d === dateQuery;
+app.get('/api/gigs', async (req, res) => {
+  const gigs = await listGigs({
+    q: req.query.q,
+    type: req.query.type,
+    genre: req.query.genre,
+    location: req.query.location,
+    status: req.query.status,
+    date: req.query.date,
+    hostId: req.query.hostId,
   });
-
-  gigs.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  res.json({ gigs: gigs.map((g) => publicGig(g, db)) });
+  res.json({ gigs });
 });
 
-app.get('/api/gigs/:id', (req, res) => {
-  const db = getDb();
-  const gig = db.gigs.find((g) => g.id === req.params.id);
+app.get('/api/gigs/:id', async (req, res) => {
+  const gig = await getGigById(req.params.id);
   if (!gig) return res.status(404).json({ error: 'Gig not found.' });
-  res.json({ gig: publicGig(gig, db) });
+  res.json({ gig });
 });
 
-app.post('/api/gigs', requireAuth, requireRole('organizer'), (req, res) => {
-  const db = getDb();
-  const {
-    title, description, type, venue, location, date, startTime, endTime,
-    fee, capacity, genre, requirements, status,
-  } = req.body || {};
-
+app.post('/api/gigs', requireAuth, requireRole('organizer'), async (req, res) => {
+  const { title, venue, location, date } = req.body || {};
   if (!title || !venue || !location || !date) {
     return res.status(400).json({ error: 'Title, venue, location and date are required.' });
   }
 
-  const gig = {
-    id: uid('g'),
+  const gig = await createGig({
     title: String(title).trim(),
-    description: String(description || '').trim(),
-    type: String(type || 'Event'),
+    description: String(req.body.description || '').trim(),
+    type: String(req.body.type || 'Event'),
     venue: String(venue).trim(),
     location: String(location).trim(),
     date: new Date(date).toISOString(),
-    startTime: startTime || '12:00',
-    endTime: endTime || '18:00',
-    fee: {
-      currency: fee?.currency || 'NGN',
-      amount: Number(fee?.amount) || 0,
-    },
-    capacity: Number(capacity) || 1,
-    status: status || 'open',
-    genre: String(genre || '').trim(),
+    startTime: req.body.startTime || '12:00',
+    endTime: req.body.endTime || '18:00',
+    fee: { currency: req.body.fee?.currency || 'NGN', amount: Number(req.body.fee?.amount) || 0 },
+    capacity: Number(req.body.capacity) || 1,
+    status: req.body.status || 'open',
+    genre: String(req.body.genre || '').trim(),
     tags: toArray(req.body.tags),
-    requirements: String(requirements || '').trim(),
+    requirements: String(req.body.requirements || '').trim(),
     hostId: req.user.id,
     hostName: `${req.user.name}${req.user.title ? ` · ${req.user.title}` : ''}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  db.gigs.push(gig);
-  saveDb();
-  res.status(201).json({ gig: publicGig(gig, db) });
+  });
+  res.status(201).json({ gig });
 });
 
-app.put('/api/gigs/:id', requireAuth, requireRole('organizer'), (req, res) => {
-  const db = getDb();
-  const gig = db.gigs.find((g) => g.id === req.params.id);
-  if (!gig) return res.status(404).json({ error: 'Gig not found.' });
-  if (gig.hostId !== req.user.id) return res.status(403).json({ error: 'You can only edit your own gigs.' });
+app.put('/api/gigs/:id', requireAuth, requireRole('organizer'), async (req, res) => {
+  const existing = await getGigById(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Gig not found.' });
+  if (existing.hostId !== req.user.id) return res.status(403).json({ error: 'You can only edit your own gigs.' });
 
-  const allowed = ['title', 'description', 'type', 'venue', 'location', 'date', 'startTime', 'endTime',
-    'genre', 'requirements', 'status'];
-  for (const field of allowed) {
-    if (req.body[field] !== undefined) gig[field] = req.body[field];
-  }
-  if (req.body.fee) {
-    gig.fee = { currency: req.body.fee.currency || 'NGN', amount: Number(req.body.fee.amount) || 0 };
-  }
-  if (req.body.capacity !== undefined) gig.capacity = Number(req.body.capacity) || 1;
-  if (req.body.tags !== undefined) gig.tags = toArray(req.body.tags);
-
-  gig.updatedAt = new Date().toISOString();
-  saveDb();
-  res.json({ gig: publicGig(gig, db) });
+  const gig = await updateGig(req.params.id, req.body);
+  res.json({ gig });
 });
 
-app.delete('/api/gigs/:id', requireAuth, requireRole('organizer'), (req, res) => {
-  const db = getDb();
-  const gigIdx = db.gigs.findIndex((g) => g.id === req.params.id);
-  if (gigIdx === -1) return res.status(404).json({ error: 'Gig not found.' });
-  if (db.gigs[gigIdx].hostId !== req.user.id) {
-    return res.status(403).json({ error: 'You can only delete your own gigs.' });
-  }
+app.delete('/api/gigs/:id', requireAuth, requireRole('organizer'), async (req, res) => {
+  const existing = await getGigById(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Gig not found.' });
+  if (existing.hostId !== req.user.id) return res.status(403).json({ error: 'You can only delete your own gigs.' });
 
-  db.gigs.splice(gigIdx, 1);
-  db.applications = db.applications.filter((a) => a.gigId !== req.params.id);
-  saveDb();
+  await deleteGig(req.params.id);
   res.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------
 // Applications
 // ---------------------------------------------------------------------------
-app.post('/api/gigs/:id/apply', requireAuth, requireRole('musician'), (req, res) => {
-  const db = getDb();
-  const gig = db.gigs.find((g) => g.id === req.params.id);
+app.post('/api/gigs/:id/apply', requireAuth, requireRole('musician'), async (req, res) => {
+  const gig = await getGigById(req.params.id);
   if (!gig) return res.status(404).json({ error: 'Gig not found.' });
   if (gig.status !== 'open') return res.status(400).json({ error: 'This gig is no longer accepting applications.' });
 
-  const already = db.applications.find((a) => a.gigId === gig.id && a.musicianId === req.user.id);
+  const apps = await listApplicationsForUser({ role: 'musician', id: req.user.id });
+  const already = apps.find((a) => a.gigId === gig.id);
   if (already) return res.status(409).json({ error: 'You have already applied to this gig.' });
 
-  const { note, phone } = req.body || {};
-  const application = {
-    id: uid('a'),
+  const application = await createApplication({
     gigId: gig.id,
     musicianId: req.user.id,
     musicianName: req.user.name,
     email: req.user.email,
-    phone: String(phone || '').trim(),
-    note: String(note || '').trim().slice(0, 1200),
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+    phone: String(req.body?.phone || '').trim(),
+    note: String(req.body?.note || '').trim().slice(0, 1200),
+  });
 
-  db.applications.push(application);
-  saveDb();
+  await createNotification({
+    userId: gig.hostId,
+    type: 'application',
+    title: 'New application',
+    body: `${req.user.name} applied to ${gig.title}.`,
+    link: '/dashboard',
+  });
+
   res.status(201).json({ application });
 });
 
-app.get('/api/applications/my', requireAuth, (req, res) => {
-  const db = getDb();
-  const role = req.user.role;
-
-  let applications = db.applications;
-  if (role === 'musician') {
-    applications = applications.filter((a) => a.musicianId === req.user.id);
-  } else {
-    const gigIds = db.gigs.filter((g) => g.hostId === req.user.id).map((g) => g.id);
-    applications = applications.filter((a) => gigIds.includes(a.gigId));
-  }
-
-  const enriched = applications.map((a) => {
-    const gig = db.gigs.find((g) => g.id === a.gigId);
-    const musician = db.users.find((u) => u.id === a.musicianId);
-    return { ...a, gig: gig ? publicGig(gig, db) : null, musician: musician ? safeMusician(musician) : null };
-  });
-
-  enriched.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  res.json({ applications: enriched });
+app.get('/api/applications/my', requireAuth, async (req, res) => {
+  const applications = await listApplicationsForUser(req.user);
+  res.json({ applications });
 });
 
-app.put('/api/applications/:id', requireAuth, requireRole('organizer'), (req, res) => {
-  const db = getDb();
-  const application = db.applications.find((a) => a.id === req.params.id);
+app.put('/api/applications/:id', requireAuth, requireRole('organizer'), async (req, res) => {
+  const application = await getApplicationById(req.params.id);
   if (!application) return res.status(404).json({ error: 'Application not found.' });
-
-  const gig = db.gigs.find((g) => g.id === application.gigId);
+  const gig = await getGigById(application.gigId);
   if (!gig || gig.hostId !== req.user.id) {
     return res.status(403).json({ error: 'You can only manage applications for your own gigs.' });
   }
@@ -377,10 +315,87 @@ app.put('/api/applications/:id', requireAuth, requireRole('organizer'), (req, re
     return res.status(400).json({ error: 'Status must be pending, accepted or declined.' });
   }
 
-  application.status = status;
-  application.updatedAt = new Date().toISOString();
-  saveDb();
-  res.json({ application });
+  const updated = await updateApplicationStatus(req.params.id, status);
+  const label = status === 'accepted' ? 'accepted your application' : status === 'declined' ? 'declined your application' : 'updated your application';
+  await createNotification({
+    userId: application.musicianId,
+    type: 'application',
+    title: 'Application update',
+    body: `${req.user.name} ${label} for ${gig.title}.`,
+    link: '/dashboard',
+  });
+
+  res.json({ application: updated });
+});
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+app.post('/api/applications/:id/checkout', requireAuth, requireRole('musician'), async (req, res) => {
+  const application = await getApplicationById(req.params.id);
+  if (!application) return res.status(404).json({ error: 'Application not found.' });
+  if (application.musicianId !== req.user.id) return res.status(403).json({ error: 'You can only pay for your own applications.' });
+  if (application.status !== 'accepted') return res.status(400).json({ error: 'This application must be accepted before payment.' });
+  if (!application.gig) return res.status(404).json({ error: 'The gig is no longer available.' });
+
+  const amount = application.gig.fee.amount;
+  const currency = application.gig.fee.currency;
+
+  const payment = await createPayment({
+    applicationId: application.id,
+    gigId: application.gig.id,
+    payerId: req.user.id,
+    amount,
+    currency,
+    provider: 'mock',
+  });
+
+  res.status(201).json({ payment, amount, currency });
+});
+
+app.post('/api/payments/:id/confirm', requireAuth, async (req, res) => {
+  const payments = await listPaymentsForUser(req.user);
+  const payment = payments.find((p) => p.id === req.params.id);
+  if (!payment) return res.status(404).json({ error: 'Payment not found.' });
+  if (payment.payerId !== req.user.id) return res.status(403).json({ error: 'You can only confirm your own payments.' });
+
+  const paid = await markPaymentPaid(payment.id);
+  const application = await getApplicationById(payment.applicationId);
+  if (application?.gig?.hostId) {
+    await createNotification({
+      userId: application.gig.hostId,
+      type: 'payment',
+      title: 'Payment received',
+      body: `${req.user.name} completed the booking fee for ${application.gig.title}.`,
+      link: '/dashboard',
+    });
+  }
+  await createNotification({
+    userId: req.user.id,
+    type: 'payment',
+    title: 'Payment confirmed',
+    body: `Your booking fee for ${application?.gig?.title || 'the gig'} was confirmed.`,
+    link: '/dashboard',
+  });
+  res.json({ payment: paid });
+});
+
+app.get('/api/payments/my', requireAuth, async (req, res) => {
+  const payments = await listPaymentsForUser(req.user);
+  res.json({ payments });
+});
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  const notifications = await listNotifications(req.user.id);
+  res.json({ notifications, unread: notifications.filter((n) => !n.read).length });
+});
+
+app.post('/api/notifications/read', requireAuth, async (req, res) => {
+  await markNotificationsRead(req.user.id);
+  res.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------
@@ -388,18 +403,37 @@ app.put('/api/applications/:id', requireAuth, requireRole('organizer'), (req, re
 // ---------------------------------------------------------------------------
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
-  app.get(/^\/(?!api\/).*/, (req, res) => {
+  app.get(/^\/(?!api\/|uploads\/).*/, (req, res) => {
     res.sendFile(path.join(DIST_DIR, 'index.html'));
   });
 }
 
 // ---------------------------------------------------------------------------
+// Error handler
+// ---------------------------------------------------------------------------
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  console.error(err);
+  res.status(500).json({ error: 'Server error.' });
+});
+
+// ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
-app.listen(PORT, HOST, () => {
-  console.log(`\niConnect server running at http://${HOST}:${PORT}`);
-  console.log(`  API:        http://localhost:${PORT}/api`);
-  console.log(`  Preview UI: http://localhost:${PORT}${fs.existsSync(DIST_DIR) ? '' : '  (build the frontend with npm run build)'}`);
-  console.log('  Demo login: ayo@example.com / password123  (musician)');
-  console.log('              chidi@example.com / password123  (organizer)\n');
-});
+initDb()
+  .then(() => {
+    app.listen(PORT, HOST, () => {
+      console.log(`\niConnect server running at http://${HOST}:${PORT}`);
+      console.log(`  API:         http://localhost:${PORT}/api`);
+      console.log(`  Database:    ${process.env.DATABASE_URL ? 'PostgreSQL (DATABASE_URL)' : 'SQLite (data/iconnect.sqlite)'}`);
+      console.log(`  Uploads:     /uploads`);
+      console.log('  Demo login:  ayo@example.com / password123  (musician)');
+      console.log('               chidi@example.com / password123  (organizer)\n');
+    });
+  })
+  .catch((error) => {
+    console.error('Could not initialize database:', error);
+    process.exit(1);
+  });

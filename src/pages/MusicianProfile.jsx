@@ -35,7 +35,9 @@ export default function MusicianProfile() {
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <div className="detail-card">
           <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Avatar name={musician.name} size={76} />
+            {musician.photoUrl
+              ? <img src={musician.photoUrl} alt="" className="avatar" style={{ width: 76, height: 76, objectFit: 'cover' }} />
+              : <Avatar name={musician.name} size={76} />}
             <div>
               <h1 className="page-title" style={{ marginBottom: 4 }}>{musician.name}</h1>
               <div className="muted">{musician.title || 'Musician'} {musician.location && `· ${musician.location}`}</div>
@@ -73,9 +75,21 @@ export default function MusicianProfile() {
         </div>
 
         <div className="detail-card">
-          <h3 className="section-title">Contact</h3>
+          <h3 className="section-title">Contact & media</h3>
           <p className="muted">To book this musician, post a gig or send an application through iConnect.</p>
-          <Link to="/gigs" className="btn primary block">Browse open gigs</Link>
+
+          {musician.epkUrl && (
+            <a href={musician.epkUrl} target="_blank" rel="noreferrer" className="btn small block" style={{ marginBottom: 10 }}>View EPK / media kit ↗</a>
+          )}
+          {musician.socials && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+              {musician.socials.instagram && <a className="badge" href={musician.socials.instagram} target="_blank" rel="noreferrer">Instagram ↗</a>}
+              {musician.socials.youtube && <a className="badge" href={musician.socials.youtube} target="_blank" rel="noreferrer">YouTube ↗</a>}
+              {musician.socials.website && <a className="badge" href={musician.socials.website} target="_blank" rel="noreferrer">Website ↗</a>}
+            </div>
+          )}
+
+          <Link to="/gigs" className="btn primary block" style={{ marginTop: 14 }}>Browse open gigs</Link>
           <div className="alert success" style={{ marginTop: 14 }}>
             💡 Pro tip: organizers reach musicians by posting a gig with clear details.
           </div>

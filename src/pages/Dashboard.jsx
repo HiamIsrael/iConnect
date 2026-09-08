@@ -11,17 +11,20 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [applications, setApplications] = useState([]);
   const [gigs, setGigs] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const load = useCallback(() => {
     const tasks = [api.get('/applications/my')];
+    if (user?.role === 'musician') tasks.push(api.get('/payments/my'));
     if (user?.role === 'organizer') tasks.push(api.get('/gigs'));
     Promise.all(tasks)
-      .then(([apps, g]) => {
+      .then(([apps, extra]) => {
         setApplications(apps.applications);
-        if (g) setGigs(g.gigs.filter((gig) => gig.hostId === user.id));
+        if (user?.role === 'musician') setPayments(extra.payments);
+        if (user?.role === 'organizer') setGigs(extra.gigs.filter((gig) => gig.hostId === user.id));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -37,13 +40,32 @@ export default function Dashboard() {
       await api.put(`/applications/${appId}`, { status });
       setRefreshKey((k) => k + 1);
     } catch {
-      // no-op
+      // ignore
+    }
+  }
+
+  async function checkout(appId) {
+    try {
+      await api.post(`/applications/${appId}/checkout`);
+      setRefreshKey((k) => k + 1);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function confirmPayment(paymentId) {
+    try {
+      await api.post(`/payments/${paymentId}/confirm`);
+      setRefreshKey((k) => k + 1);
+    } catch {
+      // ignore
     }
   }
 
   if (loading) return <div className="page container"><div className="loader">Loading dashboard…</div></div>;
 
   const pending = applications.filter((a) => a.status === 'pending').length;
+  const accepted = applications.filter((a) => a.status === 'accepted').length;
 
   return (
     <div className="page container">
@@ -52,15 +74,13 @@ export default function Dashboard() {
           <h1 className="page-title">{user.role === 'organizer' ? 'Organizer dashboard' : 'Musician dashboard'}</h1>
           <p className="page-subtitle">Welcome back, {user.name}.</p>
         </div>
-        {user.role === 'organizer' && (
-          <button className="btn primary" onClick={() => setCreateOpen(true)}>+ Post a gig</button>
-        )}
+        {user.role === 'organizer' && <button className="btn primary" onClick={() => setCreateOpen(true)}>+ Post a gig</button>}
       </div>
 
       <div className="stats" style={{ marginTop: 8 }}>
         <div className="stat"><div className="num">{applications.length}</div><div className="label">{user.role === 'organizer' ? 'Total applications' : 'Applications sent'}</div></div>
         <div className="stat"><div className="num">{pending}</div><div className="label">Pending</div></div>
-        <div className="stat"><div className="num">{user.role === 'organizer' ? gigs.length : applications.filter((a) => a.status === 'accepted').length}</div><div className="label">{user.role === 'organizer' ? 'Your gigs' : 'Accepted'}</div></div>
+        <div className="stat"><div className="num">{user.role === 'organizer' ? gigs.length : accepted}</div><div className="label">{user.role === 'organizer' ? 'Your gigs' : 'Accepted'}</div></div>
       </div>
 
       {user.role === 'organizer' && (
@@ -100,34 +120,56 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid">
-            {applications.map((app) => (
-              <div key={app.id} className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                    {app.musician && <Avatar name={app.musician.name} size={44} />}
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{user.role === 'musician' ? app.gig?.title : app.musician?.name}</div>
-                      <div className="muted" style={{ fontSize: 13 }}>
-                        {user.role === 'musician' ? `${formatDate(app.gig?.date)} · ${app.gig?.location}` : `Applied to ${app.gig?.title}`}
+            {applications.map((app) => {
+              const payment = payments.find((p) => p.applicationId === app.id);
+              return (
+                <div key={app.id} className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                      {user.role === 'organizer' && app.musician && <Avatar name={app.musician.name} size={44} />}
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{user.role === 'musician' ? app.gig?.title : app.musician?.name}</div>
+                        <div className="muted" style={{ fontSize: 13 }}>
+                          {user.role === 'musician' ? `${formatDate(app.gig?.date)} · ${app.gig?.location}` : `Applied to ${app.gig?.title}`}
+                        </div>
                       </div>
                     </div>
+                    <StatusBadge status={app.status} />
                   </div>
-                  <StatusBadge status={app.status} />
+
+                  {app.note && user.role === 'organizer' && (
+                    <p className="muted" style={{ fontSize: 14, marginTop: 12 }}>“{app.note}”</p>
+                  )}
+                  {user.role === 'musician' && <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>Sent {timeAgo(app.createdAt)}</p>}
+
+                  {user.role === 'organizer' && app.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                      <button className="btn small" style={{ color: 'var(--success)' }} onClick={() => changeStatus(app.id, 'accepted')}>Accept</button>
+                      <button className="btn small" style={{ color: 'var(--danger)' }} onClick={() => changeStatus(app.id, 'declined')}>Decline</button>
+                    </div>
+                  )}
+
+                  {user.role === 'musician' && app.status === 'accepted' && app.gig?.fee?.amount > 0 && (
+                    <div style={{ marginTop: 14, borderTop: '1px solid var(--line-soft)', paddingTop: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                        <span className="muted">Booking fee</span>
+                        <strong>{formatMoney(app.gig.fee.amount, app.gig.fee.currency)}</strong>
+                      </div>
+                      {payment?.status === 'paid' ? (
+                        <div className="alert success" style={{ marginBottom: 0 }}>✅ Booking fee paid (ref {payment.reference})</div>
+                      ) : payment?.status === 'pending' ? (
+                        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                          <button className="btn small" onClick={() => confirmPayment(payment.id)}>Confirm mock payment</button>
+                          <span className="muted" style={{ fontSize: 12, alignSelf: 'center' }}>Pending · {payment.reference}</span>
+                        </div>
+                      ) : (
+                        <button className="btn small primary" style={{ marginTop: 12 }} onClick={() => checkout(app.id)}>Pay booking fee</button>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                {app.note && !user_role_musician(user) && (
-                  <p className="muted" style={{ fontSize: 14, marginTop: 12 }}>“{app.note}”</p>
-                )}
-                {user.role === 'musician' && <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>Sent {timeAgo(app.createdAt)}</p>}
-
-                {user.role === 'organizer' && app.status === 'pending' && (
-                  <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-                    <button className="btn small" style={{ color: 'var(--success)' }} onClick={() => changeStatus(app.id, 'accepted')}>Accept</button>
-                    <button className="btn small" style={{ color: 'var(--danger)' }} onClick={() => changeStatus(app.id, 'declined')}>Decline</button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -137,10 +179,6 @@ export default function Dashboard() {
       )}
     </div>
   );
-}
-
-function user_role_musician(user) {
-  return user.role === 'musician';
 }
 
 function CreateGigModal({ open, onClose, onCreated }) {

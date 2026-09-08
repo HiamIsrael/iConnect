@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -28,6 +29,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
+              <NotificationBell />
               <Link to="/profile" className="btn ghost small" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <Avatar name={user.name} size={28} />
                 {user.name.split(' ')[0]}

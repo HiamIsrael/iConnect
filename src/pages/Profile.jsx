@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { Link } from 'react-router-dom';
+import { api, uploadFile } from '../api';
 import { useAuth } from '../context/AuthContext';
+import Avatar from '../components/Avatar';
 
 export default function Profile() {
   const { user, refresh } = useAuth();
@@ -14,13 +16,20 @@ export default function Profile() {
     tags: '',
     yearsExperience: 0,
     availability: 'open',
+    instagram: '',
+    youtube: '',
+    website: '',
   });
   const [rate, setRate] = useState({ amount: 0, currency: 'NGN', unit: 'per gig' });
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [epkUrl, setEpkUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState('');
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
     if (!user) return;
+    const socials = user.socials || {};
     setForm({
       name: user.name || '',
       title: user.title || '',
@@ -31,16 +40,39 @@ export default function Profile() {
       tags: (user.tags || []).join(', '),
       yearsExperience: user.yearsExperience || 0,
       availability: user.availability || 'open',
+      instagram: socials.instagram || '',
+      youtube: socials.youtube || '',
+      website: socials.website || '',
     });
     setRate({
       currency: user.rate?.currency || 'NGN',
       amount: user.rate?.amount || 0,
       unit: user.rate?.unit || 'per gig',
     });
+    setPhotoUrl(user.photoUrl || '');
+    setEpkUrl(user.epkUrl || '');
   }, [user]);
 
   function update(key) {
     return (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  }
+
+  async function handleUpload(e, kind) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(kind);
+    setMessage(null);
+    try {
+      const data = await uploadFile(file, kind);
+      if (kind === 'photo') setPhotoUrl(data.url);
+      else setEpkUrl(data.url);
+      setMessage({ type: 'success', text: `${kind === 'photo' ? 'Photo' : 'EPK'} uploaded. Click Save profile to publish.` });
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setUploading('');
+      e.target.value = '';
+    }
   }
 
   async function handleSubmit(e) {
@@ -58,6 +90,13 @@ export default function Profile() {
       instruments: form.instruments.split(',').map((s) => s.trim()).filter(Boolean),
       tags: form.tags.split(',').map((s) => s.trim()).filter(Boolean),
       rate,
+      photoUrl,
+      epkUrl,
+      socials: {
+        instagram: form.instagram,
+        youtube: form.youtube,
+        website: form.website,
+      },
     };
     try {
       await api.put(`/musicians/${user.id}`, payload);
@@ -72,45 +111,57 @@ export default function Profile() {
 
   return (
     <div className="page container">
-      <div className="form-wrap" style={{ maxWidth: 720 }}>
-        <h1 className="page-title">Your profile</h1>
-        <p className="page-subtitle">Make it easy for organizers to discover and book you.</p>
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 20 }}>
+          {photoUrl ? <img src={photoUrl} alt="" className="avatar" style={{ width: 76, height: 76, objectFit: 'cover' }} /> : <Avatar name={form.name || '?'} size={76} />}
+          <div>
+            <h1 className="page-title" style={{ marginBottom: 4 }}>{form.name || 'Your profile'}</h1>
+            <div className="muted">Make it easy for organizers to discover and book you.</div>
+          </div>
+        </div>
 
         <form className="form-card form-stack" onSubmit={handleSubmit}>
-          <label>Name
-            <input value={form.name} onChange={update('name')} required />
-          </label>
-          <label>Headline / title
-            <input value={form.title} onChange={update('title')} placeholder="e.g. Saxophonist · Session & Live" />
-          </label>
-          <label>Bio
-            <textarea value={form.bio} onChange={update('bio')} placeholder="Tell us about your sound, experience and style." />
-          </label>
+          {message && <div className={`alert ${message.type}`}>{message.text}</div>}
+
+          <label>Name <input value={form.name} onChange={update('name')} required /></label>
+          <label>Headline / title <input value={form.title} onChange={update('title')} placeholder="e.g. Saxophonist · Session & Live" /></label>
+          <label>Bio <textarea value={form.bio} onChange={update('bio')} placeholder="Tell us about your sound, experience and style." /></label>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-            <label>Location
-              <input value={form.location} onChange={update('location')} placeholder="e.g. Lagos, Nigeria" />
+            <label>Location <input value={form.location} onChange={update('location')} placeholder="e.g. Lagos, Nigeria" /></label>
+            <label>Genre <input value={form.genre} onChange={update('genre')} placeholder="e.g. Jazz / Afrobeat" /></label>
+            <label>Years of experience <input type="number" min="0" value={form.yearsExperience} onChange={update('yearsExperience')} /></label>
+          </div>
+
+          <label>Instruments (comma separated) <input value={form.instruments} onChange={update('instruments')} placeholder="Saxophone, Flute" /></label>
+          <label>Tags (comma separated) <input value={form.tags} onChange={update('tags')} placeholder="Jazz, Studio sessions, Festival" /></label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+            <label className="upload-box">
+              Profile photo
+              <input type="file" accept="image/*" onChange={(e) => handleUpload(e, 'photo')} disabled={!!uploading} />
+              <span className="muted" style={{ fontSize: 13 }}>
+                {uploading === 'photo' ? 'Uploading…' : photoUrl ? <a href={photoUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>View current photo ↗</a> : 'Upload an image'}
+              </span>
             </label>
-            <label>Genre
-              <input value={form.genre} onChange={update('genre')} placeholder="e.g. Jazz / Afrobeat" />
-            </label>
-            <label>Years of experience
-              <input type="number" min="0" value={form.yearsExperience} onChange={update('yearsExperience')} />
+            <label className="upload-box">
+              EPK / media kit
+              <input type="file" accept="application/pdf,image/*,application/zip,audio/*" onChange={(e) => handleUpload(e, 'epk')} disabled={!!uploading} />
+              <span className="muted" style={{ fontSize: 13 }}>
+                {uploading === 'epk' ? 'Uploading…' : epkUrl ? <a href={epkUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>View uploaded EPK ↗</a> : 'Upload PDF / ZIP / audio'}
+              </span>
             </label>
           </div>
 
-          <label>Instruments (comma separated)
-            <input value={form.instruments} onChange={update('instruments')} placeholder="Saxophone, Flute" />
-          </label>
-          <label>Tags (comma separated)
-            <input value={form.tags} onChange={update('tags')} placeholder="Jazz, Studio sessions, Festival" />
-          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+            <label>Instagram <input value={form.instagram} onChange={update('instagram')} placeholder="https://instagram.com/…" /></label>
+            <label>YouTube <input value={form.youtube} onChange={update('youtube')} placeholder="https://youtube.com/…" /></label>
+            <label>Website <input value={form.website} onChange={update('website')} placeholder="https://…" /></label>
+          </div>
 
           {user?.role === 'musician' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-              <label>Rate (amount)
-                <input type="number" min="0" value={rate.amount} onChange={(e) => setRate((r) => ({ ...r, amount: Number(e.target.value) }))} />
-              </label>
+              <label>Rate (amount) <input type="number" min="0" value={rate.amount} onChange={(e) => setRate((r) => ({ ...r, amount: Number(e.target.value) }))} /></label>
               <label>Currency
                 <select value={rate.currency} onChange={(e) => setRate((r) => ({ ...r, currency: e.target.value }))}>
                   <option value="NGN">NGN</option>
@@ -136,8 +187,10 @@ export default function Profile() {
             </select>
           </label>
 
-          {message && <div className={`alert ${message.type}`}>{message.text}</div>}
-          <button className="btn primary" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn primary" disabled={saving || !!uploading}>{saving ? 'Saving…' : 'Save profile'}</button>
+            <Link to="/dashboard" className="btn">Go to dashboard</Link>
+          </div>
         </form>
       </div>
     </div>

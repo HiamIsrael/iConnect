@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getDb } from './db.js';
+import { getUserById } from './store.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'iconnect-dev-secret-change-me';
 const TOKEN_TTL = '7d';
@@ -22,7 +22,7 @@ export function publicUser(user) {
   return rest;
 }
 
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -30,7 +30,7 @@ export function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    const user = getDb().users.find((u) => u.id === payload.sub);
+    const user = await getUserById(payload.sub);
     if (!user) return res.status(401).json({ error: 'Account no longer exists.' });
     req.user = user;
     next();

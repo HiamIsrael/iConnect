@@ -29,6 +29,22 @@ async function request(path, options = {}) {
   return data;
 }
 
+export async function uploadFile(file, kind) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('kind', kind);
+  const response = await fetch('/api/uploads', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+    body: form,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Upload failed.');
+  }
+  return data;
+}
+
 export const api = {
   get: (path) => request(path),
   post: (path, body) => request(path, { method: 'POST', body }),

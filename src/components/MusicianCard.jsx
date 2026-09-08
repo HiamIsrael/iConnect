@@ -6,7 +6,9 @@ export default function MusicianCard({ musician }) {
     <div className="card pointer musician-card">
       <Link to={`/musicians/${musician.id}`} style={{ display: 'block' }}>
         <div className="top">
-          <Avatar name={musician.name} size={52} />
+          {musician.photoUrl
+            ? <img src={musician.photoUrl} alt="" className="avatar" style={{ width: 52, height: 52, objectFit: 'cover' }} />
+            : <Avatar name={musician.name} size={52} />}
           <div>
             <h3>{musician.name}</h3>
             <div className="role">{musician.title || 'Musician'}</div>

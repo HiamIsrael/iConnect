@@ -563,6 +563,21 @@ img {
   resize: vertical;
 }
 
+/* Upload box */
+.upload-box {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.upload-box input[type='file'] {
+  font-size: 13px;
+  padding: 6px;
+}
+
 /* Modal */
 .modal-backdrop {
   position: fixed;
