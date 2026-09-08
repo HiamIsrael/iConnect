@@ -47,10 +47,18 @@ export default function GigDetailScreen() {
   function googleCalendarUrl() {
     const d = new Date(gig!.date);
     const pad = (n: number) => String(n).padStart(2, '0');
-    const start = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(Number(gig!.startTime?.slice(0, 2)))}${pad(Number(gig!.startTime?.slice(3, 5)))}00`;
-    const end = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(Number(gig!.endTime?.slice(0, 2)))}${pad(Number(gig!.endTime?.slice(3, 5)))}00`;
-    const params = new URLSearchParams({ action: 'TEMPLATE', text: gig!.title, dates: `${start}/${end}`, details: gig!.description || '', location: `${gig!.venue}, ${gig!.location}` });
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    const [startH = '09', startM = '00'] = (gig!.startTime || '09:00').split(':');
+    const [endH = '17', endM = '00'] = (gig!.endTime || '17:00').split(':');
+    const start = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(Number(startH))}${pad(Number(startM))}00`;
+    const end = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(Number(endH))}${pad(Number(endM))}00`;
+    const q = [
+      ['action', 'TEMPLATE'],
+      ['text', gig!.title],
+      ['dates', `${start}/${end}`],
+      ['details', gig!.description || ''],
+      ['location', `${gig!.venue}, ${gig!.location}`],
+    ].map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+    return `https://calendar.google.com/calendar/render?${q}`;
   }
 
   if (!gig) {
