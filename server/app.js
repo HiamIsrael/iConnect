@@ -29,6 +29,7 @@ import {
   listNotifications,
   markNotificationsRead,
   createPayment,
+  getPaymentByReference,
   markPaymentPaid,
   listPaymentsForUser,
   createPasswordResetToken,
@@ -41,9 +42,10 @@ import {
   listMessagesWith,
   sendMessage,
   listAvailability,
+  listDemos,
+  listVenuesByOwner,
   createAvailabilityBlock,
   deleteAvailabilityBlock,
-  listDemos,
   createDemo,
   deleteDemo,
   createReport,
@@ -51,6 +53,12 @@ import {
   updateReportStatus,
   setUserBlocked,
   listAllUsers,
+  listVenues,
+  getVenueById,
+  createVenue,
+  updateVenue,
+  deleteVenue,
+  listVenueGigs,
   listBands,
   getBandById,
   createBand,
@@ -76,6 +84,7 @@ import {
 import { signToken, requireAuth, requireRole, publicUser } from './auth.js';
 import { config } from './config.js';
 import { sendEmail } from './notify.js';
+import { getPaymentProviderName, isMockProvider, createProviderPayment, verifyProviderPayment } from './payments.js';
 
 const DIST_DIR = path.join(config.root, 'dist');
 
@@ -318,17 +327,29 @@ export function createApp() {
 
   app.post('/api/gigs', requireAuth, requireRole('organizer'), async (req, res) => {
     const { title, venue, location, date } = req.body || {};
-    if (isBlank(title) || isBlank(venue) || isBlank(location) || isBlank(date)) {
-      return res.status(400).json({ error: 'Title, venue, location and date are required.' });
+    if (isBlank(title) || isBlank(location) || isBlank(date)) {
+      return res.status(400).json({ error: 'Title, location and date are required.' });
+    }
+    if (isBlank(venue) && !req.body.venueId) {
+      return res.status(400).json({ error: 'Venue name or a saved venue is required.' });
     }
     const parsedDate = new Date(date);
     if (Number.isNaN(parsedDate.getTime())) return res.status(400).json({ error: 'Invalid date.' });
+
+    let venueName = venue ? String(venue).trim() : '';
+    let venueId = req.body.venueId || null;
+    if (venueId) {
+      const venueRow = await getVenueById(venueId);
+      if (!venueRow) return res.status(404).json({ error: 'Venue not found.' });
+      venueName = venueName || venueRow.name;
+    }
 
     const gig = await createGig({
       title: String(title).trim(),
       description: String(req.body.description || '').trim(),
       type: String(req.body.type || 'Event'),
-      venue: String(venue).trim(),
+      venue: venueName,
+      venueId,
       location: String(location).trim(),
       date: parsedDate.toISOString(),
       startTime: req.body.startTime || '12:00',
@@ -441,16 +462,34 @@ export function createApp() {
     const fullAmount = application.gig.fee.amount;
     const depositPercent = Number(application.gig.depositPercent) || 0;
     const amount = depositPercent > 0 ? Math.round((fullAmount * depositPercent) / 100) : fullAmount;
+    const currency = application.gig.fee.currency;
+
+    const reference = uid('payref');
+    let provider = 'mock';
+    let checkoutUrl = null;
+    if (!isMockProvider()) {
+      const created = await createProviderPayment({
+        amountCents: amount * 100,
+        currency,
+        email: req.user.email,
+        reference,
+        callbackUrl: config.payment.callbackUrl,
+        metadata: { applicationId: application.id, gigId: application.gig.id, payerId: req.user.id },
+      });
+      provider = getPaymentProviderName();
+      checkoutUrl = created.checkoutUrl || null;
+    }
 
     const payment = await createPayment({
       applicationId: application.id,
       gigId: application.gig.id,
       payerId: req.user.id,
       amount,
-      currency: application.gig.fee.currency,
-      provider: 'mock',
+      currency,
+      provider,
+      reference,
     });
-    res.status(201).json({ payment, amount, currency: application.gig.fee.currency, depositPercent, fullAmount });
+    res.status(201).json({ payment, amount, currency, depositPercent, fullAmount, checkoutUrl, provider });
   });
 
   app.post('/api/payments/:id/confirm', requireAuth, async (req, res) => {
@@ -458,6 +497,17 @@ export function createApp() {
     const payment = payments.find((p) => p.id === req.params.id);
     if (!payment) return res.status(404).json({ error: 'Payment not found.' });
     if (payment.payerId !== req.user.id) return res.status(403).json({ error: 'You can only confirm your own payments.' });
+
+    let verified = isMockProvider();
+    if (!verified) {
+      try {
+        const result = await verifyProviderPayment(payment.reference);
+        verified = result.verified;
+      } catch (err) {
+        return res.status(400).json({ error: err.message });
+      }
+    }
+    if (!verified) return res.status(400).json({ error: 'Payment not confirmed by the provider.' });
 
     const paid = await markPaymentPaid(payment.id);
     const application = await getApplicationById(payment.applicationId);
@@ -483,6 +533,32 @@ export function createApp() {
   app.get('/api/payments/my', requireAuth, async (req, res) => {
     const payments = await listPaymentsForUser(req.user);
     res.json({ payments });
+  });
+
+  // Provider redirect landing. Marks verified by reference when provider supports it.
+  app.get('/api/payments/callback', async (req, res) => {
+    const reference = req.query.reference || req.query.trxref || req.query.tx_ref;
+    if (!reference) return res.status(400).json({ error: 'Missing payment reference.' });
+    if (isMockProvider()) return res.status(400).json({ error: 'Mock provider does not use callbacks.' });
+    const payment = await getPaymentByReference(reference);
+    if (!payment) return res.status(404).json({ error: 'Payment not found.' });
+    try {
+      const result = await verifyProviderPayment(reference);
+      if (result.verified) {
+        await markPaymentPaid(payment.id);
+        const application = await getApplicationById(payment.applicationId);
+        if (application?.gig?.hostId) {
+          await createNotification({ userId: application.gig.hostId, type: 'payment', title: 'Payment received', body: `${application.musicianName} completed a booking payment for ${application.gig.title}.`, link: '/dashboard' });
+        }
+        if (application?.musician?.id) {
+          // musician matches payer
+        }
+        await createNotification({ userId: payment.payerId, type: 'payment', title: 'Payment confirmed', body: 'Your booking payment was confirmed.', link: '/dashboard' });
+      }
+    } catch {
+      // not yet verified; leave pending
+    }
+    res.redirect('/dashboard');
   });
 
   // -------------------------------------------------------------------------
@@ -702,6 +778,129 @@ export function createApp() {
     const user = await setUserBlocked(req.params.id, false);
     if (!user) return res.status(404).json({ error: 'User not found.' });
     res.json({ user: publicUser(user) });
+  });
+
+  // -------------------------------------------------------------------------
+  // Venues / events
+  // -------------------------------------------------------------------------
+  app.get('/api/venues', async (req, res) => {
+    const venues = await listVenues({ q: req.query.q, location: req.query.location, type: req.query.type });
+    res.json({ venues });
+  });
+
+  app.get('/api/venues/:id', async (req, res) => {
+    const venue = await getVenueById(req.params.id);
+    if (!venue) return res.status(404).json({ error: 'Venue not found.' });
+    const gigs = await listVenueGigs(venue.id);
+    res.json({ venue, gigs });
+  });
+
+  app.post('/api/venues', requireAuth, requireRole('organizer'), async (req, res) => {
+    const { name, location } = req.body || {};
+    if (isBlank(name) || isBlank(location)) return res.status(400).json({ error: 'Venue name and location are required.' });
+    const venue = await createVenue({
+      name: String(name).trim(),
+      location: String(location).trim(),
+      type: String(req.body.type || '').trim(),
+      description: String(req.body.description || '').trim(),
+      capacity: Number(req.body.capacity) || 0,
+      amenities: String(req.body.amenities || '').trim(),
+      photoUrl: req.body.photoUrl || null,
+      website: String(req.body.website || '').trim(),
+      phone: String(req.body.phone || '').trim(),
+      contactEmail: String(req.body.contactEmail || '').trim(),
+      ownerId: req.user.id,
+    });
+    res.status(201).json({ venue });
+  });
+
+  app.get('/api/venues/mine', requireAuth, requireRole('organizer'), async (req, res) => {
+    const venues = await listVenuesByOwner(req.user.id);
+    res.json({ venues });
+  });
+
+  app.put('/api/venues/:id', requireAuth, requireRole('organizer'), async (req, res) => {
+    const venue = await getVenueById(req.params.id);
+    if (!venue) return res.status(404).json({ error: 'Venue not found.' });
+    if (venue.ownerId !== req.user.id) return res.status(403).json({ error: 'Only the venue owner can edit it.' });
+    const updated = await updateVenue(req.params.id, req.body);
+    res.json({ venue: updated });
+  });
+
+  app.delete('/api/venues/:id', requireAuth, requireRole('organizer'), async (req, res) => {
+    const venue = await getVenueById(req.params.id);
+    if (!venue) return res.status(404).json({ error: 'Venue not found.' });
+    if (venue.ownerId !== req.user.id) return res.status(403).json({ error: 'Only the venue owner can delete it.' });
+    await deleteVenue(req.params.id);
+    res.json({ ok: true });
+  });
+
+  // -------------------------------------------------------------------------
+  // EPK templates & calendar sync
+  // -------------------------------------------------------------------------
+  app.get('/api/musicians/:id/epk', async (req, res) => {
+    const musician = await getUserById(req.params.id);
+    if (!musician || musician.role !== 'musician') return res.status(404).json({ error: 'Musician not found.' });
+    const [demos, availability, reviews] = await Promise.all([
+      listDemos(musician.id),
+      listAvailability(musician.id),
+      getReviewsForUser(musician.id),
+    ]);
+    const epk = {
+      name: musician.name,
+      headline: musician.title || '',
+      genre: musician.genre || '',
+      location: musician.location || '',
+      bio: musician.bio || '',
+      instruments: musician.instruments || [],
+      rate: musician.rate || null,
+      availability: availability.map((a) => ({ status: a.status, startAt: a.startAt, endAt: a.endAt })),
+      demos: demos.map((d) => ({ type: d.type, title: d.title || d.type, url: d.url })),
+      socials: musician.socials || null,
+      photoUrl: musician.photoUrl || null,
+      epkUrl: musician.epkUrl || null,
+      reviews: reviews.reviews || [],
+      averageRating: reviews.average,
+      reviewCount: reviews.count,
+    };
+    const text = buildEpkText(epk);
+    res.json({ epk, text });
+  });
+
+  app.get('/api/musicians/:id/epk.txt', async (req, res) => {
+    const musician = await getUserById(req.params.id);
+    if (!musician || musician.role !== 'musician') return res.status(404).send('Musician not found.');
+    const [demos, availability, reviews] = await Promise.all([
+      listDemos(musician.id),
+      listAvailability(musician.id),
+      getReviewsForUser(musician.id),
+    ]);
+    const epk = {
+      name: musician.name, headline: musician.title || '', genre: musician.genre || '', location: musician.location || '',
+      bio: musician.bio || '', instruments: musician.instruments || [], rate: musician.rate || null,
+      availability: availability.map((a) => ({ status: a.status, startAt: a.startAt, endAt: a.endAt })),
+      demos: demos.map((d) => ({ type: d.type, title: d.title || d.type, url: d.url })),
+      socials: musician.socials || null, photoUrl: musician.photoUrl || null, epkUrl: musician.epkUrl || null,
+      reviews: reviews.reviews || [], averageRating: reviews.average, reviewCount: reviews.count,
+    };
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${musician.name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-epk.txt"`);
+    res.send(buildEpkText(epk));
+  });
+
+  app.get('/api/gigs/:id/calendar.ics', async (req, res) => {
+    const gig = await getGigById(req.params.id);
+    if (!gig) return res.status(404).json({ error: 'Gig not found.' });
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${gig.title.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}.ics"`);
+    res.send(buildGigIcs(gig));
+  });
+
+  app.get('/api/calendar/gigs.ics', async (req, res) => {
+    const gigs = await listGigs({ status: 'open' });
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="iconnect-gigs.ics"');
+    res.send(buildGigsIcs(gigs));
   });
 
   // -------------------------------------------------------------------------
@@ -932,6 +1131,96 @@ export function createApp() {
   });
 
   return app;
+}
+
+// ---------------------------------------------------------------------------
+// EPK & calendar helpers
+// ---------------------------------------------------------------------------
+function icsEscape(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+
+function icsDate(value) {
+  const d = new Date(value);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+}
+
+function buildGigIcs(gig) {
+  const start = new Date(`${gig.date.slice(0, 10)}T${gig.startTime || '12:00'}:00Z`);
+  const end = new Date(`${gig.date.slice(0, 10)}T${gig.endTime || '18:00'}:00Z`);
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//iConnect//Calendar//EN',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${gig.id}@iconnect`,
+    `DTSTAMP:${icsDate(new Date())}`,
+    `DTSTART:${icsDate(start)}`,
+    `DTEND:${icsDate(end)}`,
+    `SUMMARY:${icsEscape(gig.title)}`,
+    `DESCRIPTION:${icsEscape(`${gig.description || ''} ${gig.location || ''}`.trim())}`,
+    `LOCATION:${icsEscape(`${gig.venue}${gig.location ? `, ${gig.location}` : ''}`)}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n');
+}
+
+function buildGigsIcs(gigs) {
+  const events = gigs.map((g) => buildGigIcs(g).split('\r\n').slice(5, -2).join('\r\n'));
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//iConnect//Calendar//EN',
+    'CALSCALE:GREGORIAN',
+    events.join('\r\n'),
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n');
+}
+
+function buildEpkText(epk) {
+  const lines = [];
+  lines.push('========================================');
+  lines.push('  ELECTRONIC PRESS KIT (EPK) — iConnect');
+  lines.push('========================================');
+  lines.push('');
+  lines.push(`Name:        ${epk.name}`);
+  lines.push(`Headline:    ${epk.headline}`);
+  lines.push(`Genre:       ${epk.genre}`);
+  lines.push(`Location:    ${epk.location}`);
+  lines.push(`Instruments: ${(epk.instruments || []).join(', ') || '—'}`);
+  if (epk.rate) lines.push(`Rate:        ${epk.rate.amount} ${epk.rate.currency} ${epk.rate.unit}`);
+  if (epk.averageRating) lines.push(`Rating:      ${epk.averageRating}/5 (${epk.reviewCount} reviews)`);
+  lines.push('');
+  lines.push('--- BIO ---');
+  lines.push(epk.bio || '(no bio)');
+  if (epk.socials) {
+    lines.push('');
+    lines.push('--- LINKS ---');
+    if (epk.socials.instagram) lines.push(`Instagram:  ${epk.socials.instagram}`);
+    if (epk.socials.youtube) lines.push(`YouTube:    ${epk.socials.youtube}`);
+    if (epk.socials.website) lines.push(`Website:    ${epk.socials.website}`);
+  }
+  if (epk.epkUrl) {
+    lines.push('');
+    lines.push(`EPK file:   ${epk.epkUrl}`);
+  }
+  if ((epk.demos || []).length) {
+    lines.push('');
+    lines.push('--- DEMOS ---');
+    for (const d of epk.demos) lines.push(`${d.type.toUpperCase()}: ${d.title} → ${d.url}`);
+  }
+  if ((epk.availability || []).length) {
+    lines.push('');
+    lines.push('--- AVAILABILITY ---');
+    for (const a of epk.availability) lines.push(`${a.status === 'unavailable' ? 'Unavailable' : 'Available'}  ${a.startAt} → ${a.endAt}`);
+  }
+  lines.push('');
+  lines.push('Generated by iConnect.');
+  return lines.join('\n');
 }
 
 export async function startServer() {

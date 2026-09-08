@@ -38,6 +38,21 @@ export default function GigDetail() {
     }
   }
 
+  function googleCalendarUrl() {
+    const date = new Date(gig.date);
+    const pad = (n) => String(n).padStart(2, '0');
+    const start = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(Number(gig.startTime?.slice(0, 2)))}${pad(Number(gig.startTime?.slice(3, 5)))}00`;
+    const end = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(Number(gig.endTime?.slice(0, 2)))}${pad(Number(gig.endTime?.slice(3, 5)))}00`;
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: gig.title,
+      dates: `${start}/${end}`,
+      details: gig.description || '',
+      location: `${gig.venue || ''}, ${gig.location || ''}`,
+    });
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  }
+
   if (loading) return <div className="page container"><div className="loader">Loading gig…</div></div>;
   if (!gig) {
     return (
@@ -110,6 +125,11 @@ export default function GigDetail() {
             <li><span className="k">Open spots</span><span>{gig.capacity}</span></li>
             <li><span className="k">Host</span><span>{gig.hostName}</span></li>
           </ul>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+            <a className="btn small" href={googleCalendarUrl()} target="_blank" rel="noreferrer">📅 Google Calendar</a>
+            <a className="btn small" href={`/api/gigs/${gig.id}/calendar.ics`}>⬇ Download .ics</a>
+          </div>
 
           {message && <div className={`alert ${message.type}`}>{message.text}</div>}
 

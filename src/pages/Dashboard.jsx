@@ -249,6 +249,7 @@ function CreateGigModal({ open, onClose, onCreated }) {
     description: '',
     type: 'Club / Pub',
     venue: '',
+    venueId: '',
     location: '',
     date: '',
     startTime: '18:00',
@@ -265,6 +266,11 @@ function CreateGigModal({ open, onClose, onCreated }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [venues, setVenues] = useState([]);
+
+  useEffect(() => {
+    api.get('/venues/mine').then((d) => setVenues(d.venues)).catch(() => {});
+  }, []);
 
   function update(key) {
     return (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -280,6 +286,7 @@ function CreateGigModal({ open, onClose, onCreated }) {
         description: form.description,
         type: form.type,
         venue: form.venue,
+        venueId: form.venueId,
         location: form.location,
         date: form.date,
         startTime: form.startTime,
@@ -294,7 +301,7 @@ function CreateGigModal({ open, onClose, onCreated }) {
         depositPercent: Number(form.depositPercent) || 0,
       });
       setForm({
-        title: '', description: '', type: 'Club / Pub', venue: '', location: '', date: '',
+        title: '', description: '', type: 'Club / Pub', venue: '', venueId: '', location: '', date: '',
         startTime: '18:00', endTime: '22:00', feeAmount: 0, feeCurrency: 'NGN', capacity: 1,
         genre: '', tags: '', requirements: '', contractTerms: '', cancellationPolicy: '', depositPercent: 0,
       });
@@ -329,9 +336,22 @@ function CreateGigModal({ open, onClose, onCreated }) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <label>Venue <input value={form.venue} onChange={update('venue')} required /></label>
+          <label>Venue
+            <select value={form.venueId} onChange={(e) => {
+              const vid = e.target.value;
+              const chosen = venues.find((v) => v.id === vid);
+              setForm((f) => ({ ...f, venueId: vid, venue: chosen ? chosen.name : f.venue }));
+            }}>
+              <option value="">Manual venue name</option>
+              {venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </label>
           <label>Location <input value={form.location} onChange={update('location')} required /></label>
         </div>
+        <label>Venue name (used if not selecting a saved venue)
+          <input value={form.venue} onChange={update('venue')} placeholder="e.g. The Jazz House" required={!form.venueId} />
+        </label>
+        <div style={{ textAlign: 'right' }}><Link to="/venues" className="muted" style={{ fontSize: 13 }}>+ Add / manage venues</Link></div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <label>Date <input type="date" value={form.date} onChange={update('date')} required /></label>

@@ -140,6 +140,7 @@ export default function MusicianProfile() {
               {follow.following ? 'Following ✓' : '+ Follow'} ({follow.count})
             </button>
           )}
+          <Link to={`/epk/${musician.id}`} className="btn block" style={{ marginTop: 10 }}>📄 View EPK</Link>
           {user && user.id !== musician.id && (
             <Link to={`/messages?to=${musician.id}`} className="btn block" style={{ marginTop: 10 }}>💬 Message</Link>
           )}

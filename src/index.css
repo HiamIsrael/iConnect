@@ -660,12 +660,37 @@ footer .container {
   gap: 12px;
 }
 
+/* Mobile nav */
+.menu-toggle {
+  display: none;
+}
+
 @media (max-width: 860px) {
   .detail-grid {
     grid-template-columns: 1fr;
   }
   .navbar .nav-links {
     display: none;
+  }
+  .navbar .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line-soft);
+    padding: 12px 4%;
+    gap: 4px;
+    z-index: 30;
+  }
+  .navbar .nav-links.open a {
+    padding: 12px;
+    border-radius: 10px;
+  }
+  .menu-toggle {
+    display: inline-flex;
   }
   .hero {
     padding-top: 50px;

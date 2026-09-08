@@ -304,6 +304,48 @@ describe('iConnect API', () => {
     expect(feed.body.posts.some((p) => p.bandId === bandId)).toBe(true);
   });
 
+  it('exposes venues, EPK and calendar endpoints', async () => {
+    const venues = await request(app).get('/api/venues');
+    expect(venues.body.venues.length).toBeGreaterThanOrEqual(3);
+
+    const venueDetail = await request(app).get('/api/venues/v_jazz_house');
+    expect(venueDetail.body.venue.name).toBe('The Jazz House');
+    expect(venueDetail.body.gigs.length).toBeGreaterThanOrEqual(1);
+
+    const epk = await request(app).get('/api/musicians/u_ayo/epk');
+    expect(epk.status).toBe(200);
+    expect(epk.body.epk.name).toBe('Ayo Adeyemi');
+    expect(epk.body.text).toContain('ELECTRONIC PRESS KIT');
+
+    const ics = await request(app).get('/api/gigs/g_sunset_jazz/calendar.ics');
+    expect(ics.status).toBe(200);
+    expect(ics.headers['content-type']).toContain('text/calendar');
+    expect(ics.text).toContain('BEGIN:VCALENDAR');
+    expect(ics.text).toContain('Sunset Jazz Night');
+  });
+
+  it('lets organizers create venues and attach gigs', async () => {
+    const organizer = tokenOf(await login('chidi@example.com'));
+
+    const venue = await request(app)
+      .post('/api/venues')
+      .set('Authorization', `Bearer ${organizer}`)
+      .send({ name: 'Rooftop Stage', location: 'Lagos, Nigeria', type: 'Rooftop', capacity: 120 });
+    expect(venue.status).toBe(201);
+    const venueId = venue.body.venue.id;
+
+    const gig = await request(app)
+      .post('/api/gigs')
+      .set('Authorization', `Bearer ${organizer}`)
+      .send({ title: 'Rooftop Jazz Night', venueId, location: 'Lagos, Nigeria', date: '2026-11-01', fee: { amount: 50000, currency: 'NGN' } });
+    expect(gig.status).toBe(201);
+    expect(gig.body.gig.venueId).toBe(venueId);
+    expect(gig.body.gig.venue).toBe('Rooftop Stage');
+
+    const detail = await request(app).get(`/api/venues/${venueId}`);
+    expect(detail.body.gigs.some((g) => g.title === 'Rooftop Jazz Night')).toBe(true);
+  });
+
   it('supports password reset', async () => {
     const forgot = await request(app).post('/api/auth/forgot-password').send({ email: 'ayo@example.com' });
     expect(forgot.status).toBe(200);

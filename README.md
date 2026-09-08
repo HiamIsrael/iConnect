@@ -20,6 +20,12 @@ payments.
 - Booking terms on gigs (contract terms, cancellation policy, deposit %)
 - Networking section: community feed (posts, likes, comments, recruit posts, "Following" feed)
 - Band profiles: create bands, join/accept members, follow bands, post as a band
+- Venue / event pages: create venue profiles, attach gigs, view upcoming gigs at a venue
+- EPK templates: generate a shareable EPK view + downloadable .txt from profile data
+- Calendar sync: ICS export per gig + all open gigs, Google Calendar links
+- PWA / mobile: installable app shell, service worker, mobile nav (OK as a web app)
+- Pluggable payments: mock (default), Paystack, Flutterwave, Stripe (set keys via env)
+- Pluggable email: console (default) or Resend (set `RESEND_API_KEY`)
 - Admin console with reports, resolve/dismiss and account block/unblock
 - In-app notifications for applications, messages, reviews and payments
 - Password reset / forgot-password flow (console email in dev; pluggable providers)
@@ -91,6 +97,12 @@ Migrations: `server/migrations/*.js`
 | `DATABASE_URL` | Optional Postgres connection string |
 | `EMAIL_PROVIDER` | `console` (default) or `resend` |
 | `RESEND_API_KEY` | Resend API key for real email |
+| `PAYMENT_PROVIDER` | `mock` (default), `paystack`, `flutterwave`, or `stripe` |
+| `PAYSTACK_SECRET_KEY` | Paystack secret key (for Paystack) |
+| `FLW_SECRET_KEY` | Flutterwave secret key (for Flutterwave) |
+| `STRIPE_SECRET_KEY` | Stripe secret key (for Stripe) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe signing secret for webhook verification |
+| `PAYMENT_CALLBACK_URL` | Public callback URL used by payment providers |
 
 ## Demo accounts / seed data
 
@@ -151,6 +163,17 @@ Migrations: `server/migrations/*.js`
 | POST | /api/applications/:id/checkout | musician | Create booking payment |
 | POST | /api/payments/:id/confirm | JWT | Confirm payment |
 | GET | /api/payments/my | JWT | My payments |
+| GET | /api/payments/callback | — | Provider redirect landing (verify payment) |
+| GET | /api/gigs/:id/calendar.ics | — | Download gig as ICS |
+| GET | /api/calendar/gigs.ics | — | Download all open gigs as ICS |
+| GET | /api/musicians/:id/epk | — | EPK JSON + text template |
+| GET | /api/musicians/:id/epk.txt | — | Download EPK as .txt |
+| GET | /api/venues | — | List venues |
+| GET | /api/venues/:id | — | Venue detail + upcoming gigs |
+| POST | /api/venues | organizer | Create a venue |
+| GET | /api/venues/mine | organizer | My venues |
+| PUT | /api/venues/:id | organizer | Edit venue |
+| DELETE | /api/venues/:id | organizer | Delete venue |
 | GET | /api/reviews/user/:id | — | Reviews for a user |
 | POST | /api/applications/:id/review | JWT | Review an accepted booking |
 | GET | /api/messages/threads | JWT | List conversations |

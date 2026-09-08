@@ -31,4 +31,12 @@ export const config = {
     smtpPass: process.env.SMTP_PASS || '',
     resendKey: process.env.RESEND_API_KEY || '',
   },
+  payment: {
+    provider: process.env.PAYMENT_PROVIDER || 'mock', // mock | paystack | flutterwave | stripe
+    paystackKey: process.env.PAYSTACK_SECRET_KEY || '',
+    flwKey: process.env.FLW_SECRET_KEY || '',
+    stripeKey: process.env.STRIPE_SECRET_KEY || '',
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    callbackUrl: process.env.PAYMENT_CALLBACK_URL || `${process.env.APP_URL || 'http://localhost:3000'}/payments/callback`,
+  },
 };

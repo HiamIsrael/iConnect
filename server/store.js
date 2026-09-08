@@ -60,7 +60,7 @@ export async function resetDbForTests() {
     'notifications', 'payments', 'messages', 'reviews', 'password_reset_tokens',
     'reports', 'media_demos', 'availability_blocks', 'applications', 'gig_tags',
     'gigs', 'user_tags', 'user_instruments', 'users', 'post_comments', 'post_likes',
-    'community_posts', 'follows', 'band_members', 'bands',
+    'community_posts', 'follows', 'band_members', 'bands', 'venues',
   ]) {
     await db(table).del();
   }
@@ -101,6 +101,26 @@ export async function seedIfEmpty() {
     if (tags.length) await db('user_tags').insert(tags);
   }
 
+  for (const venue of data.venues || []) {
+    await db('venues').insert({
+      id: venue.id,
+      name: venue.name,
+      slug: venue.slug,
+      type: venue.type || '',
+      description: venue.description || '',
+      location: venue.location,
+      capacity: venue.capacity || 0,
+      amenities: venue.amenities || '',
+      photo_url: venue.photoUrl || null,
+      website: venue.website || '',
+      phone: venue.phone || '',
+      contact_email: venue.contactEmail || '',
+      owner_id: venue.ownerId,
+      created_at: iso(venue.createdAt) || now,
+      updated_at: iso(venue.updatedAt) || now,
+    });
+  }
+
   for (const gig of data.gigs) {
     await db('gigs').insert({
       id: gig.id,
@@ -108,6 +128,7 @@ export async function seedIfEmpty() {
       description: gig.description || '',
       type: gig.type || 'Event',
       venue: gig.venue,
+      venue_id: gig.venueId || null,
       location: gig.location,
       date: iso(gig.date),
       start_time: gig.startTime,
@@ -204,6 +225,7 @@ export async function seedIfEmpty() {
       created_at: iso(comment.createdAt) || now,
     });
   }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +401,7 @@ export function mapGig(row, tags = [], applicationCount = 0) {
     description: row.description || '',
     type: row.type || 'Event',
     venue: row.venue,
+    venueId: row.venue_id || null,
     location: row.location,
     date: iso(row.date),
     startTime: row.start_time,
@@ -451,6 +474,7 @@ export async function createGig(data) {
     description: data.description || '',
     type: data.type || 'Event',
     venue: data.venue,
+    venue_id: data.venueId || null,
     location: data.location,
     date: data.date,
     start_time: data.startTime || '12:00',
@@ -480,6 +504,7 @@ export async function updateGig(id, patch) {
   if (patch.description !== undefined) base.description = patch.description;
   if (patch.type !== undefined) base.type = patch.type;
   if (patch.venue !== undefined) base.venue = patch.venue;
+  if (patch.venueId !== undefined) base.venue_id = patch.venueId;
   if (patch.location !== undefined) base.location = patch.location;
   if (patch.date !== undefined) base.date = patch.date;
   if (patch.startTime !== undefined) base.start_time = patch.startTime;
@@ -643,6 +668,12 @@ export async function markPaymentPaid(id) {
 
 export async function getPaymentById(id) {
   const row = await db('payments').where({ id }).first();
+  if (!row) return null;
+  return mapPayment(row);
+}
+
+export async function getPaymentByReference(reference) {
+  const row = await db('payments').where({ reference }).first();
   if (!row) return null;
   return mapPayment(row);
 }
@@ -1297,6 +1328,122 @@ export async function addPostComment(postId, authorId, body) {
   const row = await db('post_comments').where({ id }).first();
   const author = await getUserById(authorId);
   return { id: row.id, postId, author: { id: author.id, name: author.name, photoUrl: author.photoUrl, role: author.role }, body: row.body, createdAt: iso(row.created_at) };
+}
+
+export function mapVenue(row, gigCount = 0) {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    type: row.type || '',
+    description: row.description || '',
+    location: row.location,
+    capacity: row.capacity || 0,
+    amenities: row.amenities || '',
+    photoUrl: row.photo_url || null,
+    website: row.website || '',
+    phone: row.phone || '',
+    contactEmail: row.contact_email || '',
+    ownerId: row.owner_id,
+    gigCount,
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+async function venueFromRow(row) {
+  const gigCount = await db('gigs').where({ venue_id: row.id }).count({ c: '*' }).first();
+  return mapVenue(row, Number(gigCount.c) || 0);
+}
+
+export async function listVenues(filters = {}) {
+  const { q, location, type } = filters;
+  const query = String(q || '').trim().toLowerCase();
+  const locationQuery = String(location || '').toLowerCase();
+  const typeQuery = String(type || '').toLowerCase();
+
+  let rows = db('venues').orderBy('created_at', 'desc');
+  if (locationQuery) rows = rows.whereLike('location', `%${locationQuery}%`);
+  if (typeQuery) rows = rows.whereLike('type', `%${typeQuery}%`);
+  let result = await rows;
+  if (query) result = result.filter((r) => `${r.name} ${r.description} ${r.location}`.toLowerCase().includes(query));
+  const venues = [];
+  for (const row of result) venues.push(await venueFromRow(row));
+  return venues;
+}
+
+export async function getVenueById(id) {
+  const row = await db('venues').where({ id }).first();
+  if (!row) return null;
+  return venueFromRow(row);
+}
+
+export async function getVenueBySlug(slug) {
+  const row = await db('venues').where({ slug }).first();
+  if (!row) return null;
+  return venueFromRow(row);
+}
+
+function slugifyVenue(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+export async function createVenue(data) {
+  const id = data.id || uid('v');
+  const slug = data.slug || slugifyVenue(data.name) || id;
+  await db('venues').insert({
+    id,
+    name: data.name,
+    slug,
+    type: data.type || '',
+    description: data.description || '',
+    location: data.location,
+    capacity: Number(data.capacity) || 0,
+    amenities: data.amenities || '',
+    photo_url: data.photoUrl || null,
+    website: data.website || '',
+    phone: data.phone || '',
+    contact_email: data.contactEmail || '',
+    owner_id: data.ownerId,
+  });
+  return getVenueById(id);
+}
+
+export async function updateVenue(id, patch) {
+  const row = await db('venues').where({ id }).first();
+  if (!row) return null;
+  const base = {};
+  if (patch.name !== undefined) base.name = patch.name;
+  if (patch.type !== undefined) base.type = patch.type;
+  if (patch.description !== undefined) base.description = patch.description;
+  if (patch.location !== undefined) base.location = patch.location;
+  if (patch.capacity !== undefined) base.capacity = Number(patch.capacity) || 0;
+  if (patch.amenities !== undefined) base.amenities = patch.amenities;
+  if (patch.photoUrl !== undefined) base.photo_url = patch.photoUrl;
+  if (patch.website !== undefined) base.website = patch.website;
+  if (patch.phone !== undefined) base.phone = patch.phone;
+  if (patch.contactEmail !== undefined) base.contact_email = patch.contactEmail;
+  base.updated_at = new Date().toISOString();
+  if (Object.keys(base).length) await db('venues').where({ id }).update(base);
+  return getVenueById(id);
+}
+
+export async function deleteVenue(id) {
+  await db('venues').where({ id }).del();
+}
+
+export async function listVenueGigs(venueId) {
+  const result = await db('gigs').where({ venue_id: venueId }).orderBy('date', 'asc');
+  const rows = [];
+  for (const row of result) rows.push(await gigFromRow(row));
+  return rows;
+}
+
+export async function listVenuesByOwner(ownerId) {
+  const rows = await db('venues').where({ owner_id: ownerId }).orderBy('created_at', 'desc');
+  const venues = [];
+  for (const row of rows) venues.push(await venueFromRow(row));
+  return venues;
 }
 
 export { MAX_FILE_SIZE_MB };

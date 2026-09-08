@@ -21,6 +21,9 @@ import Admin from './pages/Admin';
 import Community from './pages/Community';
 import Bands from './pages/Bands';
 import BandDetail from './pages/BandDetail';
+import Venues from './pages/Venues';
+import VenueDetail from './pages/VenueDetail';
+import Epk from './pages/Epk';
 import NotFound from './pages/NotFound';
 
 function ScrollToTop() {
@@ -41,6 +44,9 @@ export default function App() {
         <Route path="/community" element={<Community />} />
         <Route path="/bands" element={<Bands />} />
         <Route path="/bands/:id" element={<BandDetail />} />
+        <Route path="/venues" element={<Venues />} />
+        <Route path="/venues/:id" element={<VenueDetail />} />
+        <Route path="/epk/:id" element={<Epk />} />
         <Route path="/gigs" element={<Gigs />} />
         <Route path="/gigs/:id" element={<GigDetail />} />
         <Route path="/login" element={<Login />} />
