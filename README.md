@@ -98,6 +98,45 @@ Demo accounts are the same as the web app (see below). The app currently ships
 with the placeholder dark branding (`iConnect`) and must be re-branded and given
 store-specific icons/identifiers before any store submission.
 
+### Mobile web build
+
+A production (minified) web build is the fastest way to try the UI in a browser:
+
+```bash
+cd mobile
+npm run build:web   # outputs mobile/dist
+npm run serve:web   # serves mobile/dist on port 8081
+```
+
+The app reads the API endpoint at build time through `EXPO_PUBLIC_API_URL`, so
+set it before building, e.g.:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.example.com npm run build:web
+```
+
+### Hosting the mobile web app on a domain
+
+The `mobile/` build is static and can be deployed to any static host. It must be
+pointed at a publicly reachable API via `EXPO_PUBLIC_API_URL` at build time.
+
+- **Vercel** — set the project Root Directory to `mobile`, then use the
+  included `mobile/vercel.json` (build `npm run build:web`, output `dist`,
+  SPA rewrite). Deploy with the Vercel CLI (`vercel deploy`) or Git import.
+- **Netlify** — use the included `mobile/netlify.toml` (base directory
+  `mobile`, build `npm run build:web`, publish `dist`, SPA redirect). Deploy
+  with `netlify deploy --prod` or Git import.
+- **Cloudflare Pages** — set build command `npm run build:web`, build output
+  `dist`, root directory `mobile`. Add a `/* -> /index.html` SPA redirect.
+- **Docker / self-host** — run `npm run build:web` in `mobile/`, then serve
+  the resulting `dist/` directory with any static server (the repo includes a
+  tiny `serve-static.cjs` fallback).
+
+Then add your custom domain in the hosting dashboard. Deploy the API separately
+(see the web app deployment notes / Docker setup) and set the API's public root
+in `EXPO_PUBLIC_API_URL` before each web build. Native iOS/Android builds use
+[EAS Build](https://docs.expo.dev/build/introduction/) for store submission.
+
 ## Tests
 
 ```bash
