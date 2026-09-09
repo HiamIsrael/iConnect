@@ -1,5 +1,9 @@
 # Deploying iConnect to a public domain
 
+> **Choosing Render (Option A)?** There's a focused click-by-click guide at
+> [`DEPLOYMENT_RENDER.md`](./DEPLOYMENT_RENDER.md) with the repo's `render.yaml`
+> blueprint. This file is the broader reference for all host options.
+
 iConnect has two runtime parts that must both be reachable on the internet:
 
 1. **The API/server** — Express + SQLite (or Postgres) under `server/`. This is what

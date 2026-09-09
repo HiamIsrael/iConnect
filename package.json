@@ -4,6 +4,9 @@
   "private": true,
   "description": "iConnect — a platform that connects musicians with gigs.",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run server\" \"npm run client\"",
     "server": "node --watch server/index.js",

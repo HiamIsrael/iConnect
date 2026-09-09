@@ -2,10 +2,12 @@
 
 > The marketplace connecting musicians with gigs.
 
-> **Deployment:** see [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the step-by-step
-> guide to hosting the API publicly, getting a public API URL, and deploying the
-> mobile web client to a permanent domain (GitHub Pages / Vercel / Netlify /
-> Cloudflare / self-host).
+> **Deployment:** Render users should follow
+> [`DEPLOYMENT_RENDER.md`](./DEPLOYMENT_RENDER.md) (one-click blueprint, includes
+> the repo's `render.yaml`). All options are in
+> [`DEPLOYMENT.md`](./DEPLOYMENT.md): hosting the API publicly, getting a public
+> API URL, and deploying the mobile web client to a permanent domain (GitHub
+> Pages / Vercel / Netlify / Cloudflare / self-host).
 
 iConnect is a full-stack web app where musicians create profiles, discover and
 apply to gigs, and event organizers post and manage bookings — with photo/EPK

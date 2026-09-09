@@ -6,7 +6,7 @@ const TOKEN_KEY = 'iconnect_token';
 
 export const client = axios.create({
   baseURL: `${API_URL}/api`,
-  timeout: 15000,
+  timeout: 30000,
 });
 
 client.interceptors.request.use(async (config) => {
