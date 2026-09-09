@@ -126,6 +126,10 @@ pointed at a publicly reachable API via `EXPO_PUBLIC_API_URL` at build time.
 - **Netlify** — use the included `mobile/netlify.toml` (base directory
   `mobile`, build `npm run build:web`, publish `dist`, SPA redirect). Deploy
   with `netlify deploy --prod` or Git import.
+- **GitHub Pages** — push to `main` and the included
+  `.github/workflows/deploy-mobile.yml` builds and publishes `mobile/dist`.
+  Set the `EXPO_PUBLIC_API_URL` repository secret, then attach a custom
+  domain in repo Settings > Pages (source: GitHub Actions).
 - **Cloudflare Pages** — set build command `npm run build:web`, build output
   `dist`, root directory `mobile`. Add a `/* -> /index.html` SPA redirect.
 - **Docker / self-host** — run `npm run build:web` in `mobile/`, then serve
