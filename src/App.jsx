@@ -1,0 +1,67 @@
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
+import Home from './pages/Home';
+import Musicians from './pages/Musicians';
+import MusicianProfile from './pages/MusicianProfile';
+import Gigs from './pages/Gigs';
+import GigDetail from './pages/GigDetail';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Profile from './pages/Profile';
+import Dashboard from './pages/Dashboard';
+import Notifications from './pages/Notifications';
+import Messages from './pages/Messages';
+import Availability from './pages/Availability';
+import Admin from './pages/Admin';
+import Community from './pages/Community';
+import Bands from './pages/Bands';
+import BandDetail from './pages/BandDetail';
+import Venues from './pages/Venues';
+import VenueDetail from './pages/VenueDetail';
+import Epk from './pages/Epk';
+import NotFound from './pages/NotFound';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  return null;
+}
+
+export default function App() {
+  return (
+    <>
+      <ScrollToTop />
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/musicians" element={<Musicians />} />
+        <Route path="/musicians/:id" element={<MusicianProfile />} />
+        <Route path="/community" element={<Community />} />
+        <Route path="/bands" element={<Bands />} />
+        <Route path="/bands/:id" element={<BandDetail />} />
+        <Route path="/venues" element={<Venues />} />
+        <Route path="/venues/:id" element={<VenueDetail />} />
+        <Route path="/epk/:id" element={<Epk />} />
+        <Route path="/gigs" element={<Gigs />} />
+        <Route path="/gigs/:id" element={<GigDetail />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+        <Route path="/availability" element={<ProtectedRoute role="musician"><Availability /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute role="admin"><Admin /></ProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Footer />
+    </>
+  );
+}
