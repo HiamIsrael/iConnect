@@ -93,6 +93,49 @@ file.
 
 ## About iConnect
 
-<!-- Fill in: what the product does, the tech stack, how to run/test/lint. Skills
-     like spec-driven-development and test-driven-development read this section
-     to discover the project's own commands rather than assuming defaults. -->
+iConnect is a marketplace that connects musicians with gigs: musicians build
+profiles (bio, genres, instruments, rate, availability, photo/EPK, demos) and
+apply to gigs; organizers post gigs, review applications and manage bookings.
+Also: messaging, reviews, notifications, booking payments, a community feed,
+bands, venues/events, calendar export, an admin console and a PWA shell.
+
+### Stack
+
+| Layer | Technology | Where |
+|-------|-----------|-------|
+| Web frontend | React 18 + Vite 5, React Router 6, plain CSS (no UI kit) | `src/` (`pages/`, `components/`, `context/`, `api.js`) |
+| API | Node ≥ 20, Express 4, JWT + bcrypt auth, Helmet, express-rate-limit, Multer uploads | `server/` (`app.js` routes, `store.js` data access, `auth.js`, `payments.js`, `notify.js`, `config.js`) |
+| Database | Knex; SQLite (`better-sqlite3`) by default, PostgreSQL when `DATABASE_URL` is set; migrations auto-run and demo data auto-seeds on boot | `server/migrations/`, `server/seed.js` |
+| Mobile | Expo / React Native client for the same API | `mobile/` (separate `package.json`) |
+| Tests | Vitest + Supertest integration tests against the Express app | `test/app.test.js` |
+| Delivery | Docker, docker-compose, Render blueprint, GitHub Actions | `Dockerfile`, `render.yaml`, `.github/workflows/`, `DEPLOYMENT*.md` |
+
+### Commands (use these — do not assume defaults)
+
+```bash
+npm install            # deps (Node >= 20)
+npm run dev            # API on :3000 + Vite dev server on :5173 (proxies /api → :3000)
+npm run build          # vite build → dist/
+npm start              # production-style: Express serves dist/ + /api on :3000
+npm test               # vitest run  (focused: npx vitest run -t "<name>")
+npm run test:coverage  # coverage report
+cd mobile && npm install && npm start   # Expo dev server
+```
+
+There is no lint or format script yet; match the surrounding code style.
+
+### Conventions and boundaries
+
+- Browser code calls the API with **relative `/api/...` paths only** — never a
+  hard-coded host (Vite proxies in dev; Express serves both in prod).
+- Configuration comes from environment variables read in `server/config.js`
+  (`PORT`, `DATABASE_URL`, `JWT_SECRET`, `PAYMENT_PROVIDER`, `EMAIL_PROVIDER`,
+  …). Never commit secrets; `.env` is git-ignored.
+- Schema changes go in a new Knex migration under `server/migrations/`; do not
+  edit applied migrations. Keep SQLite and Postgres both working.
+- Payments and email are pluggable providers (`mock`/`console` by default).
+  Real-provider changes, auth/permission changes and destructive migrations
+  are high-risk: apply `doubt-driven-development` and ask before proceeding.
+- Demo accounts (seeded): `ayo@example.com` (musician),
+  `chidi@example.com` (organizer), password `password123`.
+- Runtime data lives in `data/` (SQLite file + uploads) and is git-ignored.
