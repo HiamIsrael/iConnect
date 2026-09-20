@@ -171,6 +171,7 @@ Migrations: `server/migrations/*.js`
 | `PORT` | API port (default `3000`) |
 | `EXPO_PUBLIC_API_URL` | Mobile app API base URL (`mobile/` only) |
 | `HOST` | Bind address (default `0.0.0.0`) |
+| `ALLOW_FRAMING` | Set to `1` to allow embedding in an `<iframe>` (hosted previews/demos); off by default |
 | `JWT_SECRET` | JWT signing secret (change in production) |
 | `APP_URL` | Public base URL used in emails |
 | `ICONNECT_DB_FILE` | SQLite file path |

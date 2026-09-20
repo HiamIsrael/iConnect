@@ -12,6 +12,9 @@ function bool(value, fallback = false) {
 export const config = {
   env: process.env.NODE_ENV || 'development',
   isProduction: bool(process.env.NODE_ENV, false) || bool(process.env.IS_PRODUCTION, false),
+  // Set ALLOW_FRAMING=1 to let the app be embedded in an <iframe> (hosted previews, demos).
+  // Off by default: Helmet then sends X-Frame-Options: SAMEORIGIN (clickjacking protection).
+  allowFraming: bool(process.env.ALLOW_FRAMING, false),
   host: process.env.HOST || '0.0.0.0',
   port: Number(process.env.PORT) || 3000,
   root: ROOT,
