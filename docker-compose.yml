@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: change-me-in-production
+      APP_URL: http://localhost:3000
+      # For Postgres, uncomment and set DATABASE_URL:
+      # DATABASE_URL: postgres://iconnect:iconnect@postgres:5432/iconnect
+    volumes:
+      - iconnect-data:/app/data
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: iconnect
+      POSTGRES_PASSWORD: iconnect
+      POSTGRES_DB: iconnect
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  iconnect-data:
+  postgres-data:

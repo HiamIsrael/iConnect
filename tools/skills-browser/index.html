@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iConnect · Agent Skills</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">◈</span>
+      <div>
+        <div class="title">iConnect <span class="dim">·</span> Agent Skills</div>
+        <div class="subtitle" id="pack-line">loading…</div>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <label class="search">
+      <span class="sr-only">Search</span>
+      <input id="search" type="search" placeholder="Search skills, commands, personas…  ( / )" autocomplete="off" />
+    </label>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar" aria-label="Installed items"></nav>
+    <main class="content" id="content">
+      <div class="loading">Reading the repository…</div>
+    </main>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

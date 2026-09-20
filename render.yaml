@@ -1,0 +1,23 @@
+# Render blueprint for A) Render blueprints.
+# Deploy with: Render Dashboard -> New -> Blueprint -> connect this repo.
+# It creates the web service, generates a JWT secret and seeds the DB on boot.
+services:
+  - type: web
+    name: iconnect-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      # Set this after the first deploy to the URL Render gives you
+      # (no /api, no trailing slash). Used for emails and payment callbacks.
+      - key: APP_URL
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: console
+      - key: PAYMENT_PROVIDER
+        value: mock
