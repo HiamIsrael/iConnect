@@ -65,6 +65,11 @@ npm run dev
 - API (Express): http://localhost:3000/api
 - Vite proxies `/api` to Express, so browser code uses **relative `/api` paths only**.
 
+Previewing from an Arena/e2b sandbox? The public URL is sandbox-scoped
+(`https://<port>-<sandboxId>.e2b.app`) and dies with the sandbox — **never
+hardcode it**. Run `npm run preview-url` for the current, verified link (the
+vite dev server also prints it on startup).
+
 Production-style single server:
 
 ```bash

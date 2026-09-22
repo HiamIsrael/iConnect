@@ -41,8 +41,8 @@ export default function Gigs() {
 
   return (
     <div className="page container">
-      <h1 className="page-title">Gigs</h1>
-      <p className="page-subtitle">Browse open bookings and upcoming opportunities.</p>
+      <h1 className="page-title" data-reveal>Gigs</h1>
+      <p className="page-subtitle" data-reveal>Browse open bookings and upcoming opportunities.</p>
 
       <div className="filters">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search gigs, venues, tags…" />

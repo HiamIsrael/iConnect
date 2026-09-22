@@ -49,8 +49,8 @@ export default function Venues() {
     <div className="page container">
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
         <div>
-          <h1 className="page-title">Venues & events</h1>
-          <p className="page-subtitle">Discover the spaces where live music happens across our community.</p>
+          <h1 className="page-title" data-reveal>Venues & events</h1>
+          <p className="page-subtitle" data-reveal>Discover the spaces where live music happens across our community.</p>
         </div>
         {user?.role === 'organizer' && <button className="btn primary" onClick={() => setCreateOpen(true)}>+ Add a venue</button>}
       </div>
@@ -67,7 +67,7 @@ export default function Venues() {
       ) : (
         <div className="grid grid-3">
           {venues.map((venue) => (
-            <Link key={venue.id} to={`/venues/${venue.id}`}>
+            <Link key={venue.id} to={`/venues/${venue.id}`} data-reveal>
               <div className="card pointer">
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   {venue.photoUrl

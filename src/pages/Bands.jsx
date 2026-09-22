@@ -51,8 +51,8 @@ export default function Bands() {
     <div className="page container">
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
         <div>
-          <h1 className="page-title">Bands & collectives</h1>
-          <p className="page-subtitle">Find your band, grow your collective, and recruit musicians.</p>
+          <h1 className="page-title" data-reveal>Bands & collectives</h1>
+          <p className="page-subtitle" data-reveal>Find your band, grow your collective, and recruit musicians.</p>
         </div>
         {user && <button className="btn primary" onClick={() => setCreateOpen(true)}>+ Create a band</button>}
       </div>
@@ -70,7 +70,7 @@ export default function Bands() {
       ) : (
         <div className="grid grid-3">
           {bands.map((band) => (
-            <Link key={band.id} to={`/bands/${band.id}`}>
+            <Link key={band.id} to={`/bands/${band.id}`} data-reveal>
               <div className="card pointer">
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   {band.photoUrl

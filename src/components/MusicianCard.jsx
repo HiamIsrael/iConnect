@@ -3,7 +3,7 @@ import Avatar from './Avatar';
 
 export default function MusicianCard({ musician }) {
   return (
-    <div className="card pointer musician-card">
+    <div className="card pointer musician-card" data-reveal>
       <Link to={`/musicians/${musician.id}`} style={{ display: 'block' }}>
         <div className="top">
           {musician.photoUrl

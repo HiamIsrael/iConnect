@@ -5,7 +5,7 @@ import StatusBadge from './StatusBadge';
 export default function GigCard({ gig }) {
   const date = new Date(gig.date);
   return (
-    <div className="card pointer gig-card">
+    <div className="card pointer gig-card" data-reveal>
       <Link to={`/gigs/${gig.id}`} style={{ display: 'block' }}>
         <div className="banner" style={{ background: gradientFor(gig.genre || gig.title) }}>
           <span className="badge brand">{gig.type}</span>

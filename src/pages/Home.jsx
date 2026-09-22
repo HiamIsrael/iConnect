@@ -39,29 +39,36 @@ export default function Home() {
 
   return (
     <div className="page" style={{ paddingTop: 0 }}>
-      <section className="hero container">
-        <span className="eyebrow">● The marketplace for live music</span>
-        <h1>Find the right <span className="grad">musicians</span> for every <span className="grad">gig</span>.</h1>
-        <p className="lead">
-          iConnect brings musicians and event organizers together — discover talented
-          performers, post and manage gigs, and book with confidence.
-        </p>
-        <div className="hero-actions">
-          <Link to="/musicians" className="btn primary">Browse musicians</Link>
-          <Link to="/gigs" className="btn">Explore gigs</Link>
-          {!user && <Link to="/signup" className="btn ghost">Create free account</Link>}
+      <section className="hero">
+        <div className="hero-glow" aria-hidden="true">
+          <div className="orb orb-a" data-parallax="0.35"><div className="orb-core" /></div>
+          <div className="orb orb-b" data-parallax="0.16"><div className="orb-core" /></div>
+          <div className="orb orb-c" data-parallax="0.5"><div className="orb-core" /></div>
         </div>
+        <div className="container hero-inner">
+          <span className="eyebrow">● The marketplace for live music</span>
+          <h1>Find the right <span className="grad">musicians</span> for every <span className="grad">gig</span>.</h1>
+          <p className="lead">
+            iConnect brings musicians and event organizers together — discover talented
+            performers, post and manage gigs, and book with confidence.
+          </p>
+          <div className="hero-actions">
+            <Link to="/musicians" className="btn primary">Browse musicians</Link>
+            <Link to="/gigs" className="btn">Explore gigs</Link>
+            {!user && <Link to="/signup" className="btn ghost">Create free account</Link>}
+          </div>
 
-        <div className="stats">
-          <div className="stat"><div className="num">100s</div><div className="label">Musician profiles</div></div>
-          <div className="stat"><div className="num">Live</div><div className="label">Gig listings</div></div>
-          <div className="stat"><div className="num">1:1</div><div className="label">Direct connection</div></div>
-          <div className="stat"><div className="num">Easy</div><div className="label">Apply in minutes</div></div>
+          <div className="stats">
+            <div className="stat"><div className="num">100s</div><div className="label">Musician profiles</div></div>
+            <div className="stat"><div className="num">Live</div><div className="label">Gig listings</div></div>
+            <div className="stat"><div className="num">1:1</div><div className="label">Direct connection</div></div>
+            <div className="stat"><div className="num">Easy</div><div className="label">Apply in minutes</div></div>
+          </div>
         </div>
       </section>
 
       <section className="container" style={{ marginTop: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div data-reveal style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
           <h2 className="section-title">Featured gigs</h2>
           <Link to="/gigs" className="muted" style={{ fontSize: 14 }}>View all →</Link>
         </div>
@@ -77,7 +84,7 @@ export default function Home() {
       </section>
 
       <section className="container" style={{ marginTop: 56 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div data-reveal style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
           <h2 className="section-title">Musicians to watch</h2>
           <Link to="/musicians" className="muted" style={{ fontSize: 14 }}>View all →</Link>
         </div>
