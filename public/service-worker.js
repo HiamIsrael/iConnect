@@ -1,4 +1,4 @@
-const CACHE = 'iconnect-v1';
+const CACHE = 'iconnect-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -16,18 +16,26 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  const { request } = event;
+
+  // Only ever intercept GET requests.
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
 
   // Don't intercept API calls or cross-origin requests.
   if (url.pathname.startsWith('/api/') || url.origin !== location.origin) return;
 
   // Network-first for navigation so fresh pages load; cache fallback for offline.
-  if (event.request.mode === 'navigate') {
+  // Only cache successful responses — never a 502/503 page from a waking server.
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
+      fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
+          }
           return response;
         })
         .catch(() => caches.match('/index.html')),

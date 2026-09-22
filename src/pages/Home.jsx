@@ -3,21 +3,39 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import GigCard from '../components/GigCard';
 import MusicianCard from '../components/MusicianCard';
+import { Loader, LoadError } from '../components/LoadState';
 import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
   const { user } = useAuth();
   const [gigs, setGigs] = useState([]);
   const [musicians, setMusicians] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
     Promise.all([api.get('/gigs'), api.get('/musicians')])
       .then(([g, m]) => {
+        if (!active) return;
         setGigs(g.gigs.slice(0, 6));
         setMusicians(m.musicians.slice(0, 4));
       })
-      .catch(() => {});
-  }, []);
+      .catch((err) => {
+        if (active) setError(err);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  const retry = () => setReloadKey((k) => k + 1);
 
   return (
     <div className="page" style={{ paddingTop: 0 }}>
@@ -47,9 +65,15 @@ export default function Home() {
           <h2 className="section-title">Featured gigs</h2>
           <Link to="/gigs" className="muted" style={{ fontSize: 14 }}>View all →</Link>
         </div>
-        <div className="grid grid-3">
-          {gigs.map((gig) => <GigCard key={gig.id} gig={gig} />)}
-        </div>
+        {loading ? (
+          <Loader>Loading featured gigs…</Loader>
+        ) : error ? (
+          <LoadError what="featured gigs" error={error} onRetry={retry} />
+        ) : (
+          <div className="grid grid-3">
+            {gigs.map((gig) => <GigCard key={gig.id} gig={gig} />)}
+          </div>
+        )}
       </section>
 
       <section className="container" style={{ marginTop: 56 }}>
@@ -57,9 +81,15 @@ export default function Home() {
           <h2 className="section-title">Musicians to watch</h2>
           <Link to="/musicians" className="muted" style={{ fontSize: 14 }}>View all →</Link>
         </div>
-        <div className="grid grid-2">
-          {musicians.map((musician) => <MusicianCard key={musician.id} musician={musician} />)}
-        </div>
+        {loading ? (
+          <Loader>Loading musicians…</Loader>
+        ) : error ? (
+          <LoadError what="musicians" error={error} onRetry={retry} />
+        ) : (
+          <div className="grid grid-2">
+            {musicians.map((musician) => <MusicianCard key={musician.id} musician={musician} />)}
+          </div>
+        )}
       </section>
     </div>
   );

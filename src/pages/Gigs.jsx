@@ -1,27 +1,43 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import GigCard from '../components/GigCard';
+import { Loader, LoadError } from '../components/LoadState';
 
 export default function Gigs() {
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
   const [genre, setGenre] = useState('');
   const [location, setLocation] = useState('');
 
   useEffect(() => {
+    let active = true;
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (type) params.set('type', type);
     if (genre) params.set('genre', genre);
     if (location) params.set('location', location);
     setLoading(true);
+    setError(null);
     api.get(`/gigs${params.size ? `?${params}` : ''}`)
-      .then((data) => setGigs(data.gigs))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [q, type, genre, location]);
+      .then((data) => {
+        if (active) setGigs(data.gigs);
+      })
+      .catch((err) => {
+        if (active) setError(err);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [q, type, genre, location, reloadKey]);
+
+  const retry = () => setReloadKey((k) => k + 1);
 
   return (
     <div className="page container">
@@ -45,7 +61,9 @@ export default function Gigs() {
       </div>
 
       {loading ? (
-        <div className="loader">Loading gigs…</div>
+        <Loader>Loading gigs…</Loader>
+      ) : error ? (
+        <LoadError what="gigs" error={error} onRetry={retry} />
       ) : gigs.length === 0 ? (
         <div className="empty">No gigs found. Try a different search.</div>
       ) : (
