@@ -12,6 +12,18 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>iConnect · Musicians & Gigs</title>
+    <script>
+      // Set the motion gate before first paint so entrance animations never
+      // flash. The `motion` class only unlocks animation CSS — every element
+      // is fully visible without it (and without any JS at all).
+      try {
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.documentElement.classList.add('motion');
+        }
+      } catch (err) {
+        /* stay static */
+      }
+    </script>
   </head>
   <body>
     <div id="root">
