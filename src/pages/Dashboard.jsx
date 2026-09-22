@@ -113,7 +113,7 @@ export default function Dashboard() {
               {gigs.map((gig) => {
                 const gigApps = applications.filter((a) => a.gigId === gig.id);
                 return (
-                  <div key={gig.id} className="card">
+                  <div key={gig.id} className="card" data-reveal>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                       <Link to={`/gigs/${gig.id}`}><h3 style={{ margin: 0 }}>{gig.title}</h3></Link>
                       <StatusBadge status={gig.status} />
@@ -143,7 +143,7 @@ export default function Dashboard() {
             {applications.map((app) => {
               const payment = payments.find((p) => p.applicationId === app.id);
               return (
-                <div key={app.id} className="card">
+                <div key={app.id} className="card" data-reveal>
                   <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                       {user.role === 'organizer' && app.musician && <Avatar name={app.musician.name} size={44} />}

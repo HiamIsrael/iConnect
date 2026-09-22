@@ -39,8 +39,8 @@ export default function Musicians() {
 
   return (
     <div className="page container">
-      <h1 className="page-title">Musicians</h1>
-      <p className="page-subtitle">Discover talented performers and direct them to your next event.</p>
+      <h1 className="page-title" data-reveal>Musicians</h1>
+      <p className="page-subtitle" data-reveal>Discover talented performers and direct them to your next event.</p>
 
       <div className="filters">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, instrument, tags…" />
