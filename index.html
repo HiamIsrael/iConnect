@@ -14,7 +14,63 @@
     <title>iConnect · Musicians & Gigs</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        #root .boot {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          background: #0c0e14;
+          color: #e9ecf5;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        #root .boot-wordmark {
+          font-size: 34px;
+          font-weight: 800;
+          letter-spacing: -0.5px;
+        }
+        #root .boot-dot {
+          display: inline-block;
+          width: 0.4em;
+          height: 0.4em;
+          margin-left: 6px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f5576c, #f093fb);
+        }
+        #root .boot-ring {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: 3px solid rgba(255, 255, 255, 0.12);
+          border-top-color: #f5576c;
+          animation: boot-spin 0.8s linear infinite;
+        }
+        #root .boot-hint {
+          color: #9aa3b8;
+          font-size: 14px;
+        }
+        @keyframes boot-spin {
+          to { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          #root .boot-ring { animation-duration: 2.4s; }
+        }
+      </style>
+      <div class="boot" aria-busy="true">
+        <div class="boot-wordmark">iConnect<span class="boot-dot" aria-hidden="true"></span></div>
+        <div class="boot-ring" aria-hidden="true"></div>
+        <div class="boot-hint">Loading…</div>
+      </div>
+      <noscript>
+        <p style="max-width: 420px; margin: 20px auto; padding: 0 20px; text-align: center; color: #9aa3b8; font-family: sans-serif; font-size: 14px; line-height: 1.55;">
+          iConnect needs JavaScript to work. Please enable JavaScript in your
+          browser settings and reload this page.
+        </p>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

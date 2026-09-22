@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
+import ServerStatus from './components/ServerStatus';
 import Home from './pages/Home';
 import Musicians from './pages/Musicians';
 import MusicianProfile from './pages/MusicianProfile';
@@ -33,35 +35,39 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  const { pathname } = useLocation();
   return (
     <>
       <ScrollToTop />
       <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/musicians" element={<Musicians />} />
-        <Route path="/musicians/:id" element={<MusicianProfile />} />
-        <Route path="/community" element={<Community />} />
-        <Route path="/bands" element={<Bands />} />
-        <Route path="/bands/:id" element={<BandDetail />} />
-        <Route path="/venues" element={<Venues />} />
-        <Route path="/venues/:id" element={<VenueDetail />} />
-        <Route path="/epk/:id" element={<Epk />} />
-        <Route path="/gigs" element={<Gigs />} />
-        <Route path="/gigs/:id" element={<GigDetail />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-        <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-        <Route path="/availability" element={<ProtectedRoute role="musician"><Availability /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute role="admin"><Admin /></ProtectedRoute>} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <ErrorBoundary resetKey={pathname}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/musicians" element={<Musicians />} />
+          <Route path="/musicians/:id" element={<MusicianProfile />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/bands" element={<Bands />} />
+          <Route path="/bands/:id" element={<BandDetail />} />
+          <Route path="/venues" element={<Venues />} />
+          <Route path="/venues/:id" element={<VenueDetail />} />
+          <Route path="/epk/:id" element={<Epk />} />
+          <Route path="/gigs" element={<Gigs />} />
+          <Route path="/gigs/:id" element={<GigDetail />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+          <Route path="/availability" element={<ProtectedRoute role="musician"><Availability /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute role="admin"><Admin /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ErrorBoundary>
       <Footer />
+      <ServerStatus />
     </>
   );
 }
