@@ -42,7 +42,10 @@ Pick one option. The result of this step is a URL like
    - `EMAIL_PROVIDER` — `console` (default) unless you have a real email provider
    - `PAYMENT_PROVIDER` — `mock` (default) unless you have real payment keys
 6. **Create Web Service.** After ~1–2 minutes Render gives you a URL like:
-   - `https://iconnect-api.onrender.com`
+   - `https://iconnect-api-amhu.onrender.com`
+
+   Copy the exact URL from the dashboard: Render adds a random suffix (here
+   `-amhu`) when the service name is already taken.
 
 > Render's free tier is fine for a demo but sleeps after inactivity. For always-on
 > use, use the paid instance or Railway/Fly.
@@ -101,19 +104,19 @@ the sandbox:
 The app builds `EXPO_PUBLIC_API_URL` + `/api`. So if the platform gives you:
 
 ```
-https://iconnect-api.onrender.com
+https://iconnect-api-amhu.onrender.com
 ```
 
 then construct `EXPO_PUBLIC_API_URL` as:
 
 ```
-https://iconnect-api.onrender.com
+https://iconnect-api-amhu.onrender.com
 ```
 
 and verify with:
 
 ```bash
-curl https://iconnect-api.onrender.com/api/health
+curl https://iconnect-api-amhu.onrender.com/api/health
 # expected: {"ok":true,"name":"iConnect","version":"0.3.0","storage":"sqlite"}
 ```
 
@@ -142,7 +145,7 @@ Set `EXPO_PUBLIC_API_URL` to the URL from Step 2 before each build.
 1. **Add a repo secret** (Settings → Secrets and variables → Actions → New
    repository secret):
    - Name: `EXPO_PUBLIC_API_URL`
-   - Value: `https://iconnect-api.onrender.com`
+   - Value: `https://iconnect-api-amhu.onrender.com`
 2. **Enable Pages**: Settings → Pages → Build and deployment → Source:
    **GitHub Actions**.
 3. Push/merge to `main` (the included `.github/workflows/deploy-mobile.yml`
@@ -175,9 +178,9 @@ Then update the environment variables if the host changes:
 
 ## Quick end-to-end example
 
-1. Deploy API on Render → get `https://iconnect-api.onrender.com`.
-2. Verify: `curl https://iconnect-api.onrender.com/api/health` returns `ok`.
-3. GitHub repo secret `EXPO_PUBLIC_API_URL=https://iconnect-api.onrender.com`.
+1. Deploy API on Render → get `https://iconnect-api-amhu.onrender.com`.
+2. Verify: `curl https://iconnect-api-amhu.onrender.com/api/health` returns `ok`.
+3. GitHub repo secret `EXPO_PUBLIC_API_URL=https://iconnect-api-amhu.onrender.com`.
 4. Enable GitHub Pages (source: GitHub Actions) and merge to `main`.
 5. Open the Pages URL → log in with `ayo@example.com` / `password123`.
 6. Optionally point a custom domain at the Pages URL and the API URL.

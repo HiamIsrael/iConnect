@@ -44,8 +44,11 @@ This repo includes `render.yaml`, so Render can create the whole service for you
 
 7. Wait ~2–5 minutes. When it's live, Render shows a public URL like:
    ```
-   https://iconnect-api.onrender.com
+   https://iconnect-api-amhu.onrender.com
    ```
+   Copy it exactly from the dashboard. If the name `iconnect-api` is already
+   taken on Render, a random suffix is added (this repo's service got `-amhu`),
+   so don't guess the URL from the service name.
 
 **That URL is your public API root.** It also serves the full web app, because
 `npm start` serves `dist/` (the built React UI) plus the API.
@@ -57,7 +60,7 @@ This repo includes `render.yaml`, so Render can create the whole service for you
 Click "Open" on Render or paste this in your browser/terminal:
 
 ```bash
-curl https://iconnect-api.onrender.com/api/health
+curl https://iconnect-api-amhu.onrender.com/api/health
 ```
 
 The **required** result is:
@@ -69,7 +72,7 @@ The **required** result is:
 Then confirm the built web UI loads:
 
 ```bash
-curl -I https://iconnect-api.onrender.com
+curl -I https://iconnect-api-amhu.onrender.com
 ```
 
 And log in via the web app itself (full UI, no mobile build needed):
@@ -85,7 +88,7 @@ And log in via the web app itself (full UI, no mobile build needed):
    Render Dashboard → **Environment** → edit `APP_URL`:
 
    ```
-   https://iconnect-api.onrender.com
+   https://iconnect-api-amhu.onrender.com
    ```
 
    (No `/api`, no trailing slash.) Save, then **Manual Deploy → Deploy latest
@@ -110,8 +113,8 @@ And log in via the web app itself (full UI, no mobile build needed):
 
 | Thing | Value |
 | --- | --- |
-| Public API base URL (your `EXPO_PUBLIC_API_URL`) | `https://iconnect-api.onrender.com` |
-| Health check that must return ok | `https://iconnect-api.onrender.com/api/health` |
+| Public API base URL (your `EXPO_PUBLIC_API_URL`) | `https://iconnect-api-amhu.onrender.com` |
+| Health check that must return ok | `https://iconnect-api-amhu.onrender.com/api/health` |
 | Demo musician account | `ayo@example.com` / `password123` |
 | Demo organizer account | `chidi@example.com` / `password123` |
 | Demo admin account | `admin@example.com` / `password123` |

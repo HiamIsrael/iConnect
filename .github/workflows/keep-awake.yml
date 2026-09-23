@@ -1,19 +1,27 @@
 # Keeps the free Render instance from sleeping by requesting /api/health
-# every 10 minutes. Without this, the first visitor after 15 idle minutes
+# every few minutes. Without this, the first visitor after 15 idle minutes
 # waits up to a minute while the server wakes up.
 #
 # Notes
 # - Uses the repository variable APP_URL if set (Settings → Secrets and
 #   variables → Actions → Variables), otherwise the default below.
+# - The default must be the exact URL shown in the Render dashboard. Render
+#   adds a suffix when a name is taken: this service is
+#   iconnect-api-amhu.onrender.com (iconnect-api.onrender.com is a different
+#   service).
 # - A single always-awake free service fits inside Render's 750 free
 #   instance-hours per month. Delete this file to stop pinging.
+# - Actions minutes are free on public repos. On a private repo this schedule
+#   would use far more than the free monthly minutes.
 # - GitHub pauses scheduled workflows after 60 days without repository
 #   activity; any commit re-enables them.
 name: Keep the API awake
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    # GitHub delays or drops scheduled runs under load (every 10 min arrived
+    # as every ~18 min, past Render's 15-min idle limit), so ask for every 5.
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions: {}
@@ -21,16 +29,17 @@ permissions: {}
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Worst case of the loop below is 3 × (90 s + 20 s) = 330 s; leave room.
+    timeout-minutes: 7
     steps:
       - name: Request /api/health
         env:
-          APP_URL: ${{ vars.APP_URL || 'https://iconnect-api.onrender.com' }}
+          APP_URL: ${{ vars.APP_URL || 'https://iconnect-api-amhu.onrender.com' }}
         run: |
           url="${APP_URL%/}/api/health"
           echo "Pinging $url"
           for attempt in 1 2 3; do
-            code=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 90 "$url" || echo 000)
+            code=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 90 "$url") || code=000
             if [ "$code" = "200" ]; then
               echo "OK: $(cat /tmp/health.json)"
               exit 0
