@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Signup() {
   const { signup } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const requestedPath = new URLSearchParams(location.search).get('next');
+  const redirectTo = requestedPath?.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : '/dashboard';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('musician');
+  const requestedRole = new URLSearchParams(location.search).get('role');
+  const [role, setRole] = useState(requestedRole === 'organizer' ? 'organizer' : 'musician');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +22,7 @@ export default function Signup() {
     setLoading(true);
     try {
       await signup({ name, email, password, role });
-      navigate('/dashboard');
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -27,7 +31,7 @@ export default function Signup() {
   }
 
   return (
-    <div className="page container">
+    <div className="page container auth-page">
       <div className="form-wrap">
         <div className="form-card">
           <h2>Join iConnect</h2>
@@ -61,7 +65,7 @@ export default function Signup() {
           </form>
 
           <p className="muted" style={{ marginTop: 18, fontSize: 14 }}>
-            Already have an account? <Link to="/login" style={{ color: 'var(--accent)' }}>Log in</Link>
+            Already have an account? <Link to={`/login${requestedPath ? `?next=${encodeURIComponent(requestedPath)}` : ''}`} style={{ color: 'var(--accent)' }}>Log in</Link>
           </p>
         </div>
       </div>

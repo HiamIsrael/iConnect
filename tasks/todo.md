@@ -12,6 +12,7 @@ Current phase: Network listings implemented; venue/band details and community re
 - Live preview is running on the sandbox website preview; screenshot, accessibility-tree, and responsive review remain the next gate.
 - Musician and gig discovery lists persist filters through `useSearchParams`; profile/EPK and gig detail presentation are implemented.
 - Venue and band listings now use the same network discovery pattern with shareable filters and designed states.
+- Login and signup preserve a safe internal `next` destination and role intent for discovery-to-conversion handoff.
 - The assistant bot is intentionally deferred until the website scope is complete and the final public experience has passed review.
 
 ## Phase 1: Design Foundation
@@ -87,7 +88,7 @@ Current phase: Network listings implemented; venue/band details and community re
   - Verify: route tests, full test/build, browser screenshots at target widths.
   - Dependencies: Tasks 5–7.
 
-- [ ] **Task 9 — Improve conversion entry and context handoff**
+- [x] **Task 9 — Improve conversion entry and context handoff**
   - Acceptance: login/signup preserves discovery context and role intent without blocking public browsing.
   - Verify: auth-entry tests, full test/build, browser keyboard/error verification.
   - Dependencies: Tasks 3, 5, and 7.

@@ -56,7 +56,7 @@ export default function Musicians() {
           <h1 className="page-title">Find the right sound.</h1>
           <p className="page-subtitle">Browse musicians by the details that matter when the room, the brief, and the fit all need to line up.</p>
         </div>
-        <Link to="/signup" className="btn primary">Create a profile</Link>
+        <Link to="/signup?next=%2Fmusicians&role=musician" className="btn primary">Create a profile</Link>
       </div>
 
       <form className="filters discovery-filters" onSubmit={(event) => event.preventDefault()}>

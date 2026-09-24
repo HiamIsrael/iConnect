@@ -919,6 +919,26 @@ footer {
   }
 }
 
+/* Authentication entry */
+
+.auth-page {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 68px);
+}
+
+.auth-page .form-card {
+  border-top: 4px solid var(--brand);
+  box-shadow: 0 12px 32px rgba(27, 26, 23, 0.08);
+}
+
+.auth-page .form-card h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
 /* Detail pages */
 
 .detail-page {

@@ -67,7 +67,7 @@ export default function Gigs() {
           <h1 className="page-title">Find a gig with a point of view.</h1>
           <p className="page-subtitle">Open opportunities with a date, a place, and enough detail to know whether the fit is worth pursuing.</p>
         </div>
-        <Link to="/signup" className="btn primary">Post a gig</Link>
+        <Link to="/signup?next=%2Fgigs&role=organizer" className="btn primary">Post a gig</Link>
       </div>
 
       <form className="filters discovery-filters gigs-filters" onSubmit={(event) => event.preventDefault()}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
@@ -9,6 +9,7 @@ import { EmptyState, LoadError, Loader } from '../components/LoadState';
 
 export default function GigDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [gig, setGig] = useState(null);
@@ -164,7 +165,7 @@ export default function GigDetail() {
             <Link to="/dashboard" className="btn block">Manage your gigs</Link>
           ) : (
             <>
-              <button className="btn primary block" onClick={() => navigate('/signup')}>Join as a musician to apply</button>
+              <button className="btn primary block" onClick={() => navigate(`/signup?next=${encodeURIComponent(location.pathname)}&role=musician`)}>Join as a musician to apply</button>
               <div className="muted" style={{ fontSize: 13, marginTop: 10, textAlign: 'center' }}>
                 Organizers manage gigs from their dashboard.
               </div>
