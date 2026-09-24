@@ -1168,8 +1168,68 @@ footer {
 }
 
 .gig-results,
-.musician-results {
+.musician-results,
+.network-results {
   align-items: stretch;
+}
+
+.network-card-link {
+  display: block;
+  height: 100%;
+}
+
+.network-card {
+  height: 100%;
+}
+
+.network-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.network-card-identity .avatar {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+}
+
+.network-card-identity h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.network-card-identity p,
+.network-card-description,
+.network-card-meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.network-card-description {
+  min-height: 3.7rem;
+  margin-top: 1.25rem;
+  line-height: 1.45;
+}
+
+.network-card-meta {
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--line-soft);
+  color: var(--text-faint);
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 /* ---------------------------------------------------------------- */
@@ -1781,6 +1841,10 @@ button:focus-visible {
   }
 
   .discovery-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid-2 {
     grid-template-columns: 1fr;
   }
 

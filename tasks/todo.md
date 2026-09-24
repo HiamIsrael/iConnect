@@ -1,7 +1,7 @@
 # iConnect Public Website Rebuild — Task List
 
 Source: `SPEC.md` and `tasks/plan.md`  
-Current phase: Public discovery and detail journeys implemented; final visual/browser review pending
+Current phase: Network listings implemented; venue/band details and community review pending
 
 ## Verification notes
 
@@ -10,7 +10,8 @@ Current phase: Public discovery and detail journeys implemented; final visual/br
 - `npm run build`: passed.
 - API health and public gig responses verified through the running local server.
 - Live preview is running on the sandbox website preview; screenshot, accessibility-tree, and responsive review remain the next gate.
-- Musician and gig discovery lists persist filters through `useSearchParams`; profile/EPK and gig detail presentation are now implemented.
+- Musician and gig discovery lists persist filters through `useSearchParams`; profile/EPK and gig detail presentation are implemented.
+- Venue and band listings now use the same network discovery pattern with shareable filters and designed states.
 - The assistant bot is intentionally deferred until the website scope is complete and the final public experience has passed review.
 
 ## Phase 1: Design Foundation
