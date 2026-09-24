@@ -1,7 +1,7 @@
 # iConnect Public Website Rebuild — Task List
 
 Source: `SPEC.md` and `tasks/plan.md`  
-Current phase: Homepage slice implemented; visual/browser review pending
+Current phase: Discovery lists implemented; visual/browser review pending
 
 ## Verification notes
 
@@ -10,6 +10,7 @@ Current phase: Homepage slice implemented; visual/browser review pending
 - `npm run build`: passed.
 - API health and public gig responses verified through the running local server.
 - Live preview is running on the sandbox website preview; screenshot, accessibility-tree, and responsive review remain the next gate.
+- Musician and gig discovery lists now persist filters through `useSearchParams`; profile/EPK and gig detail redesigns remain in the next slices.
 
 ## Phase 1: Design Foundation
 
@@ -55,7 +56,7 @@ Current phase: Homepage slice implemented; visual/browser review pending
 
 ## Phase 3: Discovery Journeys
 
-- [ ] **Task 5 — Rebuild musician discovery**
+- [x] **Task 5 — Rebuild musician discovery**
   - Acceptance: useful filters, URL state where practical, realistic long/empty/error states, and links to profile/EPK.
   - Verify: query/filter tests, full test/build, browser keyboard and responsive check.
   - Dependencies: Task 4.

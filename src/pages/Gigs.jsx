@@ -1,33 +1,42 @@
 import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import GigCard from '../components/GigCard';
-import { Loader, LoadError } from '../components/LoadState';
+import PublicSection from '../components/PublicSection';
+import { EmptyState, Loader, LoadError } from '../components/LoadState';
+
+const GIG_TYPES = [
+  'Club / Pub',
+  'Festival',
+  'Corporate',
+  'Restaurant / Cafe',
+  'Wedding',
+  'Recording',
+  'Church / Gospel',
+];
 
 export default function Gigs() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [gigs, setGigs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [q, setQ] = useState('');
-  const [type, setType] = useState('');
-  const [genre, setGenre] = useState('');
-  const [location, setLocation] = useState('');
+  const queryString = searchParams.toString();
+  const q = searchParams.get('q') || '';
+  const type = searchParams.get('type') || '';
+  const genre = searchParams.get('genre') || '';
+  const location = searchParams.get('location') || '';
 
   useEffect(() => {
     let active = true;
-    const params = new URLSearchParams();
-    if (q) params.set('q', q);
-    if (type) params.set('type', type);
-    if (genre) params.set('genre', genre);
-    if (location) params.set('location', location);
     setLoading(true);
     setError(null);
-    api.get(`/gigs${params.size ? `?${params}` : ''}`)
+    api.get(`/gigs${queryString ? `?${queryString}` : ''}`)
       .then((data) => {
-        if (active) setGigs(data.gigs);
+        if (active) setGigs(data.gigs || []);
       })
-      .catch((err) => {
-        if (active) setError(err);
+      .catch((requestError) => {
+        if (active) setError(requestError);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -35,42 +44,69 @@ export default function Gigs() {
     return () => {
       active = false;
     };
-  }, [q, type, genre, location, reloadKey]);
+  }, [queryString, reloadKey]);
 
-  const retry = () => setReloadKey((k) => k + 1);
+  const updateFilter = (key, value) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value.trim()) next.set(key, value.trim());
+      else next.delete(key);
+      return next;
+    }, { replace: true });
+  };
+
+  const clearFilters = () => setSearchParams({}, { replace: true });
+  const retry = () => setReloadKey((key) => key + 1);
+  const hasFilters = Boolean(q || type || genre || location);
 
   return (
-    <div className="page container">
-      <h1 className="page-title" data-reveal>Gigs</h1>
-      <p className="page-subtitle" data-reveal>Browse open bookings and upcoming opportunities.</p>
-
-      <div className="filters">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search gigs, venues, tags…" />
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="">All types</option>
-          <option>Club / Pub</option>
-          <option>Festival</option>
-          <option>Corporate</option>
-          <option>Restaurant / Cafe</option>
-          <option>Wedding</option>
-          <option>Recording</option>
-          <option>Church / Gospel</option>
-        </select>
-        <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location (e.g. Lagos)" />
-        <input value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="Genre (e.g. Jazz)" />
+    <div className="page container discovery-page">
+      <div className="discovery-intro">
+        <div>
+          <p className="section-eyebrow">The next room</p>
+          <h1 className="page-title">Find a gig with a point of view.</h1>
+          <p className="page-subtitle">Open opportunities with a date, a place, and enough detail to know whether the fit is worth pursuing.</p>
+        </div>
+        <Link to="/signup" className="btn primary">Post a gig</Link>
       </div>
 
-      {loading ? (
-        <Loader>Loading gigs…</Loader>
-      ) : error ? (
-        <LoadError what="gigs" error={error} onRetry={retry} />
-      ) : gigs.length === 0 ? (
-        <div className="empty">No gigs found. Try a different search.</div>
-      ) : (
-        <div className="grid grid-3">
-          {gigs.map((gig) => <GigCard key={gig.id} gig={gig} />)}
-        </div>
-      )}
+      <form className="filters discovery-filters gigs-filters" onSubmit={(event) => event.preventDefault()}>
+        <label htmlFor="gig-search" className="sr-only">Search gigs</label>
+        <input id="gig-search" value={q} onChange={(event) => updateFilter('q', event.target.value)} placeholder="Gig, venue, or tag" />
+        <label htmlFor="gig-type" className="sr-only">Filter by gig type</label>
+        <select id="gig-type" value={type} onChange={(event) => updateFilter('type', event.target.value)}>
+          <option value="">All formats</option>
+          {GIG_TYPES.map((gigType) => <option key={gigType} value={gigType}>{gigType}</option>)}
+        </select>
+        <label htmlFor="gig-location" className="sr-only">Filter by location</label>
+        <input id="gig-location" value={location} onChange={(event) => updateFilter('location', event.target.value)} placeholder="Location, e.g. Lagos" />
+        <label htmlFor="gig-genre" className="sr-only">Filter by genre</label>
+        <input id="gig-genre" value={genre} onChange={(event) => updateFilter('genre', event.target.value)} placeholder="Genre, e.g. Jazz" />
+        {hasFilters && <button type="button" className="btn ghost small filter-clear" onClick={clearFilters}>Clear filters</button>}
+      </form>
+
+      <PublicSection
+        eyebrow={loading ? 'Scanning open opportunities' : `${gigs.length} ${gigs.length === 1 ? 'gig' : 'gigs'} found`}
+        title="Open calls for the right sound."
+        action={hasFilters && <span className="muted filter-context">Filters are shareable in the URL</span>}
+        className="discovery-results"
+      >
+        {loading ? (
+          <Loader>Finding gigs…</Loader>
+        ) : error ? (
+          <LoadError what="gigs" error={error} onRetry={retry} />
+        ) : gigs.length === 0 ? (
+          <EmptyState
+            title="No gigs match those filters yet"
+            message="Try a broader location, format, genre, or search term."
+            action={<button type="button" className="btn small" onClick={clearFilters}>Reset search</button>}
+          />
+        ) : (
+          <div className="grid grid-3 gig-results">
+            {gigs.map((gig) => <GigCard key={gig.id} gig={gig} />)}
+          </div>
+        )}
+      </PublicSection>
     </div>
   );
 }
