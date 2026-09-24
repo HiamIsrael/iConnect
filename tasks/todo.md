@@ -97,6 +97,7 @@ Current phase: Public website implementation complete; final browser/accessibili
 ## Phase 5: Review and Ship
 
 - [ ] **Task 10 — Run accessibility and performance review**
+  - Current evidence is recorded in `docs/verification/public-website-qa.md`: automated tests, production build, local route smoke tests, and API checks pass. Browser visual review remains blocked by the Arena preview proxy.
   - Acceptance: no critical public-route accessibility issues; media is dimensioned and loaded appropriately; performance baseline and measured fixes are documented.
   - Verify: full tests/build, browser accessibility tree, console/network, performance trace, responsive screenshots.
   - Dependencies: Tasks 1–9.
