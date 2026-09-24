@@ -1,7 +1,7 @@
 # iConnect Public Website Rebuild — Task List
 
 Source: `SPEC.md` and `tasks/plan.md`  
-Current phase: Network listings implemented; venue/band details and community review pending
+Current phase: Public website implementation complete; final browser/accessibility/performance review pending
 
 ## Verification notes
 
@@ -12,6 +12,7 @@ Current phase: Network listings implemented; venue/band details and community re
 - Live preview is running on the sandbox website preview; screenshot, accessibility-tree, and responsive review remain the next gate.
 - Musician and gig discovery lists persist filters through `useSearchParams`; profile/EPK and gig detail presentation are implemented.
 - Venue and band listings now use the same network discovery pattern with shareable filters and designed states.
+- Venue, band, and community detail/feed states now handle loading, errors, and empty results intentionally.
 - Login and signup preserve a safe internal `next` destination and role intent for discovery-to-conversion handoff.
 - The assistant bot is intentionally deferred until the website scope is complete and the final public experience has passed review.
 
@@ -83,7 +84,7 @@ Current phase: Network listings implemented; venue/band details and community re
 
 ## Phase 4: Network Context and Conversion
 
-- [ ] **Task 8 — Rebuild venue, band, and community public context**
+- [x] **Task 8 — Rebuild venue, band, and community public context**
   - Acceptance: public routes reinforce the network and do not feel like disconnected directories.
   - Verify: route tests, full test/build, browser screenshots at target widths.
   - Dependencies: Tasks 5–7.

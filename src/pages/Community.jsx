@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/Avatar';
 import { timeAgo } from '../lib';
+import { EmptyState, LoadError, Loader } from '../components/LoadState';
 
 export default function Community() {
   const { user } = useAuth();
@@ -11,6 +12,7 @@ export default function Community() {
   const [comments, setComments] = useState({});
   const [openComments, setOpenComments] = useState({});
   const [loading, setLoading] = useState(true);
+  const [feedError, setFeedError] = useState(null);
   const [mode, setMode] = useState('all'); // all | recruit | following
   const [q, setQ] = useState('');
   const [genre, setGenre] = useState('');
@@ -30,9 +32,10 @@ export default function Community() {
     if (q) params.set('q', q);
     if (genre) params.set('genre', genre);
     setLoading(true);
+    setFeedError(null);
     api.get(`/community/posts${params.size ? `?${params}` : ''}`)
-      .then((d) => setPosts(d.posts))
-      .catch(() => {})
+      .then((d) => setPosts(d.posts || []))
+      .catch((requestError) => setFeedError(requestError))
       .finally(() => setLoading(false));
   }, [mode, q, genre]);
 
@@ -91,7 +94,7 @@ export default function Community() {
   }
 
   return (
-    <div className="page container">
+    <div className="page container community-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
         <div>
           <h1 className="page-title">Community</h1>
@@ -112,13 +115,17 @@ export default function Community() {
       </div>
 
       {loading ? (
-        <div className="loader">Loading feed…</div>
+        <Loader>Loading the community feed…</Loader>
+      ) : feedError ? (
+        <LoadError what="the community feed" error={feedError} onRetry={load} />
       ) : posts.length === 0 ? (
-        <div className="empty">
-          {mode === 'following' ? 'You are not following anyone yet. Follow musicians or bands to fill this feed.' : 'No posts yet. Be the first to share something.'}
-        </div>
+        <EmptyState
+          title={mode === 'following' ? 'Your following feed is quiet' : 'The community is waiting for its first post'}
+          message={mode === 'following' ? 'Follow musicians or bands to fill this feed.' : 'Share an update, a question, or a recruitment call.'}
+          action={user && <button type="button" className="btn small" onClick={() => setComposerOpen(true)}>Create a post</button>}
+        />
       ) : (
-        <div className="grid" style={{ gap: 16 }}>
+        <div className="grid community-feed">
           {posts.map((post) => (
             <div key={post.id} className="card">
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
