@@ -209,7 +209,7 @@ For every browser-facing slice:
 
 ## Deferred Work
 
-An in-product assistant that answers questions, proposes solutions, and helps users navigate the website is explicitly deferred until this public website scope is complete and has passed automated, browser, accessibility, and performance verification. It will receive its own capability map and spec. No assistant UI, external AI provider, conversation storage, or bot API belongs in this milestone.
+The public website scope is now complete at the implementation level and has passed automated/build/local smoke verification. The remaining browser review is blocked by the Arena preview proxy. The assistant phase is now documented separately in `ASSISTANT-CAPABILITY-MAP.md`, `SPEC-ASSISTANT.md`, and `tasks/assistant-plan.md`. No external AI provider, conversation storage, or bot API is authorized until that assistant spec is reviewed.
 
 ## Approval Gate
 
