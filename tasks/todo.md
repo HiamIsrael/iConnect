@@ -1,17 +1,25 @@
 # iConnect Public Website Rebuild — Task List
 
 Source: `SPEC.md` and `tasks/plan.md`  
-Current phase: Design foundation
+Current phase: Homepage slice implemented; visual/browser review pending
+
+## Verification notes
+
+- Dependencies installed with `npm install --nodedir=/usr/local` because the sandbox already provides Node headers locally and external header download was unavailable.
+- `npm test`: 43 tests passed.
+- `npm run build`: passed.
+- API health and public gig responses verified through the running local server.
+- Live preview is running on the sandbox website preview; screenshot, accessibility-tree, and responsive review remain the next gate.
 
 ## Phase 1: Design Foundation
 
-- [ ] **Task 1 — Establish the public design foundation**
+- [x] **Task 1 — Establish the public design foundation**
   - Acceptance: new tokens, type hierarchy, surface rules, responsive container, focus states, and reduced-motion behavior are documented in code; existing routes still build.
   - Verify: `npm run build`; inspect `/` and one existing detail route at mobile and desktop widths; no console errors.
   - Dependencies: none.
   - Files likely touched: `src/index.css`, `src/components/Navbar.jsx`, `src/components/Footer.jsx`.
 
-- [ ] **Task 2 — Add public content and state primitives**
+- [x] **Task 2 — Add public content and state primitives**
   - Acceptance: reusable section heading, status/empty treatment, media fallback, and action-group patterns exist without a UI dependency; primitives support accessible names and focus.
   - Verify: focused component tests where behavior exists, `npm test`, `npm run build`, browser inspection.
   - Dependencies: Task 1.
@@ -27,12 +35,12 @@ Current phase: Design foundation
 
 ## Phase 2: Homepage Vertical Slice
 
-- [ ] **Task 3 — Replace the homepage opening and primary paths**
+- [x] **Task 3 — Replace the homepage opening and primary paths**
   - Acceptance: homepage explains the marketplace, presents musician and organizer paths, uses real API data where available, and has designed loading/error/empty states.
   - Verify: focused route tests, `npm test`, `npm run build`, browser screenshot and network/console check.
   - Dependencies: Tasks 1–2.
 
-- [ ] **Task 4 — Add homepage discovery and trust sections**
+- [x] **Task 4 — Add homepage discovery and trust sections**
   - Acceptance: featured gigs and musicians feel editorial rather than a generic grid; proof is data-backed; the layout has a clear closing conversion action.
   - Verify: focused tests, full test/build, browser responsive and accessibility check.
   - Dependencies: Task 3.
