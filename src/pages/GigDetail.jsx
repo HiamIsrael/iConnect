@@ -4,7 +4,8 @@ import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
-import { formatDate, formatMoney, gradientFor, timeAgo } from '../lib';
+import { formatDate, formatMoney, timeAgo } from '../lib';
+import { EmptyState, LoadError, Loader } from '../components/LoadState';
 
 export default function GigDetail() {
   const { id } = useParams();
@@ -17,9 +18,26 @@ export default function GigDetail() {
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
+  const [error, setError] = useState(null);
 
-  const load = () => api.get(`/gigs/${id}`).then((data) => setGig(data.gig)).catch(() => {}).finally(() => setLoading(false));
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    api.get(`/gigs/${id}`)
+      .then((data) => {
+        if (active) setGig(data.gig);
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   async function handleApply(e) {
     e.preventDefault();
@@ -53,23 +71,28 @@ export default function GigDetail() {
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
   }
 
-  if (loading) return <div className="page container"><div className="loader">Loading gig…</div></div>;
+  if (loading) return <div className="page container detail-page gig-detail-page"><Loader>Loading gig…</Loader></div>;
+  if (error) return <div className="page container detail-page gig-detail-page"><LoadError what="this gig" error={error} onRetry={() => window.location.reload()} /></div>;
   if (!gig) {
     return (
-      <div className="page container">
-        <div className="empty">Gig not found.</div>
-        <div style={{ textAlign: 'center', marginTop: 16 }}><Link to="/gigs" className="btn">Back to gigs</Link></div>
+      <div className="page container detail-page gig-detail-page">
+        <EmptyState
+          title="Gig not found"
+          message="This opportunity may have been filled or unpublished."
+          action={<Link to="/gigs" className="btn">Back to gigs</Link>}
+        />
       </div>
     );
   }
 
   return (
-    <div className="page container">
+    <div className="page container detail-page gig-detail-page">
       <Link to="/gigs" className="muted" style={{ fontSize: 14 }}>← All gigs</Link>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <div>
-          <div className="banner" style={{ height: 180, borderRadius: 'var(--radius)', background: gradientFor(gig.genre || gig.title), display: 'flex', alignItems: 'flex-end', padding: 18, marginBottom: 22 }}>
+          <div className="detail-banner">
+            <span className="detail-banner-mark" aria-hidden="true">{(gig.genre || gig.type || 'Live').slice(0, 1)}</span>
             <span className="badge brand">{gig.type}</span>
           </div>
 
