@@ -16,29 +16,29 @@ Add a deterministic, navigation-only assistant to the public website. The guide 
 
 ### Phase 1: Knowledge and matcher
 
-- [ ] Task A1: Define approved guide intents and destination allowlist.
-- [ ] Task A2: Implement normalization and deterministic intent scoring.
-- [ ] Task A3: Add matcher and knowledge tests.
+- [x] Task A1: Define approved guide intents and destination allowlist.
+- [x] Task A2: Implement normalization and deterministic intent scoring.
+- [x] Task A3: Add matcher and knowledge tests.
 
 ### Checkpoint: Matcher
 
-- [ ] Known prompts match the expected intent.
-- [ ] Unknown prompts use fallback.
-- [ ] Returned destinations are allowlisted.
-- [ ] `npm test` passes.
+- [x] Known prompts match the expected intent.
+- [x] Unknown prompts use fallback.
+- [x] Returned destinations are allowlisted.
+- [x] `npm test` passes.
 
 ### Phase 2: Widget
 
-- [ ] Task A4: Build the accessible launcher and panel shell.
-- [ ] Task A5: Add message history, quick prompts, form states, and navigation actions.
-- [ ] Task A6: Add current-route context and responsive/reduced-motion behavior.
+- [x] Task A4: Build the accessible launcher and panel shell.
+- [x] Task A5: Add message history, quick prompts, form states, and navigation actions.
+- [x] Task A6: Add current-route context and responsive/reduced-motion behavior.
 
 ### Checkpoint: Widget
 
 - [ ] Keyboard and Escape behavior works.
 - [ ] Focus enters and returns correctly.
-- [ ] Core website navigation works with the widget closed.
-- [ ] `npm run build` passes.
+- [x] Core website navigation works with the widget closed.
+- [x] `npm run build` passes.
 
 ### Phase 3: Verification
 

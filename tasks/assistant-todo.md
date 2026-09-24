@@ -4,28 +4,28 @@ Source: `SPEC-ASSISTANT.md` and `tasks/assistant-plan.md`
 
 ## Phase 1: Knowledge and matcher
 
-- [ ] A1 — Define approved intents and destinations
-- [ ] A2 — Implement normalization and deterministic scoring
-- [ ] A3 — Add matcher and knowledge tests
+- [x] A1 — Define approved intents and destinations
+- [x] A2 — Implement normalization and deterministic scoring
+- [x] A3 — Add matcher and knowledge tests
 
 ## Matcher checkpoint
 
-- [ ] Known prompts match correctly
-- [ ] Unknown prompts fall back safely
-- [ ] Destinations are allowlisted
-- [ ] `npm test` passes
+- [x] Known prompts match correctly
+- [x] Unknown prompts fall back safely
+- [x] Destinations are allowlisted
+- [x] `npm test` passes
 
 ## Phase 2: Widget
 
-- [ ] A4 — Build accessible launcher and panel shell
-- [ ] A5 — Add conversation history, quick prompts, and navigation actions
-- [ ] A6 — Add current-route context and responsive behavior
+- [x] A4 — Build accessible launcher and panel shell
+- [x] A5 — Add conversation history, quick prompts, and navigation actions
+- [x] A6 — Add current-route context and responsive behavior
 
 ## Widget checkpoint
 
 - [ ] Keyboard, Escape, and focus return work
-- [ ] Core site works with widget closed
-- [ ] `npm run build` passes
+- [x] Core site works with widget closed
+- [x] `npm run build` passes
 
 ## Phase 3: Verification
 

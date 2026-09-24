@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import ServerStatus from './components/ServerStatus';
+import AssistantWidget from './components/AssistantWidget';
 import MotionLayer from './components/MotionLayer';
 import Home from './pages/Home';
 import Musicians from './pages/Musicians';
@@ -72,6 +73,7 @@ export default function App() {
       </main>
       <Footer />
       <ServerStatus />
+      <AssistantWidget />
     </>
   );
 }
