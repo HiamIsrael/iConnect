@@ -19,12 +19,26 @@ const PUBLIC_ROUTE_ROOTS = [
   '/reset-password',
 ];
 
-const WELCOME_MESSAGE = {
-  id: 'welcome',
-  role: 'assistant',
-  text: 'Hi, I am the iConnect Guide. Ask me how to find a gig, discover musicians, or get started.',
-  suggestions: ['Find a gig', 'Find a musician', 'How does iConnect work?', 'How do I sign up?'],
-};
+const DEFAULT_SUGGESTIONS = ['Find a gig', 'Find a musician', 'How does iConnect work?', 'How do I sign up?'];
+
+function getWelcomeMessage(pathname) {
+  const suggestions = pathname.startsWith('/gigs')
+    ? ['How do I apply?', 'Create a musician profile', 'Find a musician']
+    : pathname.startsWith('/musicians')
+      ? ['How do I create a profile?', 'Find a gig', 'What is an EPK?']
+      : pathname.startsWith('/venues')
+        ? ['Find a gig', 'Find a musician', 'How does iConnect work?']
+        : pathname.startsWith('/bands') || pathname.startsWith('/community')
+          ? ['Find collaborators', 'Find a gig', 'How do I sign up?']
+          : DEFAULT_SUGGESTIONS;
+
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    text: 'Hi, I am the iConnect Guide. Ask me how to find a gig, discover musicians, or get started.',
+    suggestions,
+  };
+}
 
 function isPublicRoute(pathname) {
   return PUBLIC_ROUTE_ROOTS.some((root) => root === '/' ? pathname === root : pathname === root || pathname.startsWith(`${root}/`));
@@ -34,7 +48,7 @@ export default function AssistantWidget() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState(() => [getWelcomeMessage(pathname)]);
   const launcherRef = useRef(null);
   const closeRef = useRef(null);
   const inputRef = useRef(null);
