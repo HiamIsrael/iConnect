@@ -26,9 +26,9 @@ The Arena external preview proxy currently reports `Sandbox not found` in the us
 
 ## Dependency review
 
-`npm audit --omit=dev` reports two moderate `qs` advisories through Express. A safe patch is available, but it should be handled as an isolated dependency change with its own test/build verification rather than bundled into the website redesign.
+`npm audit --omit=dev` now reports **0 vulnerabilities**. The existing Express query-string advisory was resolved with an isolated `qs` 6.16.0 override, followed by a fresh install, full test run, and production build.
 
-The full development dependency audit also reports issues in the current Vite/Vitest/React Router major-version line. Upgrading those packages is intentionally deferred until a dedicated dependency-migration task because the available fixes include major-version changes.
+The full development dependency audit still reports seven issues in the current Vite/Vitest/React Router major-version line. Upgrading those packages is intentionally deferred until a dedicated dependency-migration task because the available fixes include major-version changes and are not required by the production runtime.
 
 ## Remaining gate
 
