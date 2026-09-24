@@ -1,7 +1,7 @@
 # iConnect Public Website Rebuild — Task List
 
 Source: `SPEC.md` and `tasks/plan.md`  
-Current phase: Discovery lists implemented; visual/browser review pending
+Current phase: Public discovery and detail journeys implemented; final visual/browser review pending
 
 ## Verification notes
 
@@ -10,7 +10,8 @@ Current phase: Discovery lists implemented; visual/browser review pending
 - `npm run build`: passed.
 - API health and public gig responses verified through the running local server.
 - Live preview is running on the sandbox website preview; screenshot, accessibility-tree, and responsive review remain the next gate.
-- Musician and gig discovery lists now persist filters through `useSearchParams`; profile/EPK and gig detail redesigns remain in the next slices.
+- Musician and gig discovery lists persist filters through `useSearchParams`; profile/EPK and gig detail presentation are now implemented.
+- The assistant bot is intentionally deferred until the website scope is complete and the final public experience has passed review.
 
 ## Phase 1: Design Foundation
 
@@ -61,12 +62,12 @@ Current phase: Discovery lists implemented; visual/browser review pending
   - Verify: query/filter tests, full test/build, browser keyboard and responsive check.
   - Dependencies: Task 4.
 
-- [ ] **Task 6 — Rebuild musician profile and EPK presentation**
+- [x] **Task 6 — Rebuild musician profile and EPK presentation**
   - Acceptance: identity, fit, availability, work, and next action are prioritized; missing media uses an intentional fallback.
   - Verify: route tests, full test/build, browser DOM/accessibility/network verification.
   - Dependencies: Task 5.
 
-- [ ] **Task 7 — Rebuild gig discovery and detail**
+- [x] **Task 7 — Rebuild gig discovery and detail**
   - Acceptance: date, location, format, fee, and fit signals are clear; detail page has a clear application/signup path without API changes.
   - Verify: filter/action tests, full test/build, browser responsive/network check.
   - Dependencies: Task 4.

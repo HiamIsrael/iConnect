@@ -207,6 +207,10 @@ For every browser-facing slice:
 - What evidence qualifies an account, venue, musician, or gig as trustworthy?
 - Which public route URLs must remain stable for search engines and existing links?
 
+## Deferred Work
+
+An in-product assistant that answers questions, proposes solutions, and helps users navigate the website is explicitly deferred until this public website scope is complete and has passed automated, browser, accessibility, and performance verification. It will receive its own capability map and spec. No assistant UI, external AI provider, conversation storage, or bot API belongs in this milestone.
+
 ## Approval Gate
 
 This spec must be reviewed before creating `tasks/plan.md`, `tasks/todo.md`, or changing application code. Any change to scope, module boundaries, API contracts, or success criteria must be reflected here first.
