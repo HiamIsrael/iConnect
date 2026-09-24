@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { GUIDE_FALLBACK } from '../assistant/knowledge.js';
 import { matchGuideIntent } from '../assistant/matcher.js';
