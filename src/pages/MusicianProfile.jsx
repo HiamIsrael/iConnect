@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatMoney, timeAgo } from '../lib';
+import { EmptyState, LoadError, Loader } from '../components/LoadState';
 
 export default function MusicianProfile() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export default function MusicianProfile() {
   const [demos, setDemos] = useState([]);
   const [follow, setFollow] = useState({ following: false, count: 0 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
@@ -24,11 +26,14 @@ export default function MusicianProfile() {
   const [reportMsg, setReportMsg] = useState(null);
 
   useEffect(() => {
+    let active = true;
     setLoading(true);
+    setError(null);
     const tasks = [api.get(`/musicians/${id}`), api.get(`/reviews/user/${id}`), api.get(`/musicians/${id}/availability`), api.get(`/musicians/${id}/demos`)];
     if (user) tasks.push(api.get(`/follows/status/user/${id}`));
     Promise.all(tasks)
       .then(([data, rev, avail, dem, f]) => {
+        if (!active) return;
         setMusician(data.musician);
         setReviews(rev.reviews || []);
         setAverage(rev.average);
@@ -36,9 +41,16 @@ export default function MusicianProfile() {
         setDemos(dem.demos || []);
         if (f) setFollow({ following: f.following, count: f.count });
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [id]);
+      .catch((requestError) => {
+        if (active) setError(requestError);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id, user]);
 
   async function toggleFollow() {
     try {
@@ -63,18 +75,22 @@ export default function MusicianProfile() {
     }
   }
 
-  if (loading) return <div className="page container"><div className="loader">Loading profile…</div></div>;
+  if (loading) return <div className="page container detail-page musician-detail-page"><Loader>Loading profile…</Loader></div>;
+  if (error) return <div className="page container detail-page musician-detail-page"><LoadError what="this profile" error={error} onRetry={() => window.location.reload()} /></div>;
   if (!musician) {
     return (
-      <div className="page container">
-        <div className="empty">Musician not found.</div>
-        <div style={{ textAlign: 'center', marginTop: 16 }}><Link to="/musicians" className="btn">Back to musicians</Link></div>
+      <div className="page container detail-page musician-detail-page">
+        <EmptyState
+          title="Musician not found"
+          message="This profile may have been unpublished or moved."
+          action={<Link to="/musicians" className="btn">Back to musicians</Link>}
+        />
       </div>
     );
   }
 
   return (
-    <div className="page container">
+    <div className="page container detail-page musician-detail-page">
       <Link to="/musicians" className="muted" style={{ fontSize: 14 }}>← All musicians</Link>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>

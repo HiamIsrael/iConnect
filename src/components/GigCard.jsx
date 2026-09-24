@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatDateShort, formatMoney, gradientFor } from '../lib';
+import { formatDateShort, formatMoney } from '../lib';
 import StatusBadge from './StatusBadge';
 
 export default function GigCard({ gig }) {
@@ -7,7 +7,8 @@ export default function GigCard({ gig }) {
   return (
     <div className="card pointer gig-card" data-reveal>
       <Link to={`/gigs/${gig.id}`} style={{ display: 'block' }}>
-        <div className="banner" style={{ background: gradientFor(gig.genre || gig.title) }}>
+        <div className="banner">
+          <span className="banner-mark" aria-hidden="true">{(gig.genre || gig.type || 'Live').slice(0, 1)}</span>
           <span className="badge brand">{gig.type}</span>
         </div>
         <h3>{gig.title}</h3>

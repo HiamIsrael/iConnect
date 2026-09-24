@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/Avatar';
 import { timeAgo } from '../lib';
+import { EmptyState, LoadError, Loader } from '../components/LoadState';
 
 export default function BandDetail() {
   const { id } = useParams();
@@ -14,24 +15,36 @@ export default function BandDetail() {
   const [follow, setFollow] = useState({ following: false, count: 0 });
   const [myMembership, setMyMembership] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
 
   const load = useCallback(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
     const tasks = [api.get(`/bands/${id}`), api.get('/community/posts')];
     if (user) tasks.push(api.get(`/follows/status/band/${id}`));
     Promise.all(tasks)
       .then(([b, feed, f]) => {
+        if (!active) return;
         setBand(b.band);
         setMembers(b.members || []);
         setPosts((feed.posts || []).filter((p) => p.bandId === id));
         if (f) setFollow({ following: f.following, count: f.count });
         setMyMembership((b.members || []).find((m) => m.userId === user?.id) || null);
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch((requestError) => {
+        if (active) setError(requestError);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [id, user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => load(), [load]);
 
   async function toggleFollow() {
     try {
@@ -59,12 +72,16 @@ export default function BandDetail() {
     }
   }
 
-  if (loading) return <div className="page container"><div className="loader">Loading band…</div></div>;
+  if (loading) return <div className="page container detail-page band-detail-page"><Loader>Loading band…</Loader></div>;
+  if (error) return <div className="page container detail-page band-detail-page"><LoadError what="this band" error={error} onRetry={() => window.location.reload()} /></div>;
   if (!band) {
     return (
-      <div className="page container">
-        <div className="empty">Band not found.</div>
-        <div style={{ textAlign: 'center', marginTop: 16 }}><Link to="/bands" className="btn">Back to bands</Link></div>
+      <div className="page container detail-page band-detail-page">
+        <EmptyState
+          title="Band not found"
+          message="This band may have been unpublished or moved."
+          action={<Link to="/bands" className="btn">Back to bands</Link>}
+        />
       </div>
     );
   }
@@ -72,8 +89,8 @@ export default function BandDetail() {
   const isOwner = user?.id === band.ownerId;
 
   return (
-    <div className="page container">
-      <Link to="/bands" className="muted" style={{ fontSize: 14 }}>← All bands</Link>
+    <div className="page container detail-page band-detail-page">
+      <Link to="/bands" className="detail-back-link">← All bands</Link>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <div className="detail-card">
@@ -88,7 +105,7 @@ export default function BandDetail() {
           </div>
 
           <p style={{ marginTop: 20, color: 'var(--text-muted)' }}>{band.description || 'No description yet.'}</p>
-          <div className="muted" style={{ fontSize: 14 }}>👥 {band.memberCount} members · {follow.count} followers</div>
+          <div className="detail-back-link">👥 {band.memberCount} members · {follow.count} followers</div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
             <button className={`btn ${follow.following ? '' : 'primary'}`} onClick={toggleFollow}>{follow.following ? 'Following ✓' : '+ Follow'}</button>

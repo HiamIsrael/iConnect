@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const { login } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const requestedPath = new URLSearchParams(location.search).get('next');
+  const redirectTo = requestedPath?.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : '/dashboard';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +19,7 @@ export default function Login() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      navigate('/dashboard');
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -25,7 +28,7 @@ export default function Login() {
   }
 
   return (
-    <div className="page container">
+    <div className="page container auth-page">
       <div className="form-wrap">
         <div className="form-card">
           <h2>Welcome back</h2>
@@ -43,7 +46,7 @@ export default function Login() {
           </form>
 
           <p className="muted" style={{ marginTop: 18, fontSize: 14 }}>
-            New here? <Link to="/signup" style={{ color: 'var(--accent)' }}>Create an account</Link>
+            New here? <Link to={`/signup${requestedPath ? `?next=${encodeURIComponent(requestedPath)}` : ''}`} style={{ color: 'var(--accent)' }}>Create an account</Link>
             {' · '}<Link to="/forgot-password" style={{ color: 'var(--accent)' }}>Forgot password?</Link>
           </p>
 

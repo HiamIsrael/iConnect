@@ -1,8 +1,18 @@
 export function Loader({ children }) {
   return (
-    <div className="loader" role="status">
+    <div className="loader" role="status" aria-live="polite" aria-busy="true">
       <span className="spinner" aria-hidden="true" />
       <span>{children}</span>
+    </div>
+  );
+}
+
+export function EmptyState({ title, message, action }) {
+  return (
+    <div className="empty" role="status">
+      <p className="empty-title">{title}</p>
+      <p className="empty-message">{message}</p>
+      {action}
     </div>
   );
 }

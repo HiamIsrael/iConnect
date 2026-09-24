@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import GigCard from '../components/GigCard';
 import MusicianCard from '../components/MusicianCard';
-import { Loader, LoadError } from '../components/LoadState';
+import PublicSection from '../components/PublicSection';
+import { EmptyState, LoadError, Loader } from '../components/LoadState';
 import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
@@ -18,86 +19,179 @@ export default function Home() {
     let active = true;
     setLoading(true);
     setError(null);
+
     Promise.all([api.get('/gigs'), api.get('/musicians')])
-      .then(([g, m]) => {
+      .then(([gigsResponse, musiciansResponse]) => {
         if (!active) return;
-        setGigs(g.gigs.slice(0, 6));
-        setMusicians(m.musicians.slice(0, 4));
+        setGigs((gigsResponse.gigs || []).slice(0, 3));
+        setMusicians((musiciansResponse.musicians || []).slice(0, 4));
       })
-      .catch((err) => {
-        if (active) setError(err);
+      .catch((requestError) => {
+        if (active) setError(requestError);
       })
       .finally(() => {
         if (active) setLoading(false);
       });
+
     return () => {
       active = false;
     };
   }, [reloadKey]);
 
-  const retry = () => setReloadKey((k) => k + 1);
+  const retry = () => setReloadKey((key) => key + 1);
 
   return (
-    <div className="page" style={{ paddingTop: 0 }}>
-      <section className="hero">
-        <div className="hero-glow" aria-hidden="true">
-          <div className="orb orb-a" data-parallax="0.35"><div className="orb-core" /></div>
-          <div className="orb orb-b" data-parallax="0.16"><div className="orb-core" /></div>
-          <div className="orb orb-c" data-parallax="0.5"><div className="orb-core" /></div>
-        </div>
-        <div className="container hero-inner">
-          <span className="eyebrow">● The marketplace for live music</span>
-          <h1>Find the right <span className="grad">musicians</span> for every <span className="grad">gig</span>.</h1>
-          <p className="lead">
-            iConnect brings musicians and event organizers together — discover talented
-            performers, post and manage gigs, and book with confidence.
-          </p>
-          <div className="hero-actions">
-            <Link to="/musicians" className="btn primary">Browse musicians</Link>
-            <Link to="/gigs" className="btn">Explore gigs</Link>
-            {!user && <Link to="/signup" className="btn ghost">Create free account</Link>}
+    <div className="page public-home">
+      <section className="home-hero" aria-labelledby="home-title">
+        <div className="container home-hero-layout">
+          <div className="home-hero-copy">
+            <p className="hero-kicker"><span className="live-dot" /> A network for live music</p>
+            <h1 id="home-title">Find your people. <span>Fill the room.</span></h1>
+            <p className="home-hero-lead">
+              iConnect brings musicians, organizers, venues, and the next great live moment into the same room.
+            </p>
+            <div className="home-hero-actions">
+              <Link to="/gigs" className="btn primary">Find a gig</Link>
+              <Link to="/musicians" className="btn">Find a musician</Link>
+              {!user && <Link to="/signup" className="text-link">Create a free profile <span aria-hidden="true">↗</span></Link>}
+            </div>
+            <p className="home-hero-note">Browse public listings first. Join when you find the right reason.</p>
           </div>
 
-          <div className="stats">
-            <div className="stat"><div className="num">100s</div><div className="label">Musician profiles</div></div>
-            <div className="stat"><div className="num">Live</div><div className="label">Gig listings</div></div>
-            <div className="stat"><div className="num">1:1</div><div className="label">Direct connection</div></div>
-            <div className="stat"><div className="num">Easy</div><div className="label">Apply in minutes</div></div>
+          <div className="home-hero-art" aria-hidden="true">
+            <div className="hero-art-topline">
+              <span>iConnect / live network</span>
+              <span>01—24</span>
+            </div>
+            <div className="hero-art-sun" />
+            <div className="hero-art-copy">
+              <span className="hero-art-label">The next set</span>
+              <strong>is already<br />taking shape.</strong>
+            </div>
+            <div className="hero-art-lines">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="hero-art-footer">
+              <span>Musicians</span>
+              <span>Gigs</span>
+              <span>Venues</span>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="container" style={{ marginTop: 20 }}>
-        <div data-reveal style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
-          <h2 className="section-title">Featured gigs</h2>
-          <Link to="/gigs" className="muted" style={{ fontSize: 14 }}>View all →</Link>
-        </div>
-        {loading ? (
-          <Loader>Loading featured gigs…</Loader>
-        ) : error ? (
-          <LoadError what="featured gigs" error={error} onRetry={retry} />
-        ) : (
-          <div className="grid grid-3">
-            {gigs.map((gig) => <GigCard key={gig.id} gig={gig} />)}
+      <div className="container">
+        <PublicSection
+          eyebrow="Start where you are"
+          title="One network. Two clear ways in."
+          description="Whether you are building the set or booking the room, the useful part starts with seeing the right people and opportunities."
+          className="home-paths"
+        >
+          <div className="path-grid">
+            <Link to="/gigs" className="path-card path-card-musician">
+              <span className="path-number">01</span>
+              <div>
+                <p className="path-label">For musicians</p>
+                <h3>Find the next opportunity that fits.</h3>
+                <p>Browse real briefs, understand the room, and put your work in front of people who are looking.</p>
+              </div>
+              <span className="path-arrow" aria-hidden="true">↗</span>
+            </Link>
+            <Link to="/musicians" className="path-card path-card-organizer">
+              <span className="path-number">02</span>
+              <div>
+                <p className="path-label">For organizers</p>
+                <h3>Find the right people for the moment.</h3>
+                <p>Move from a vague brief to a shortlist of musicians, bands, and voices that can carry the room.</p>
+              </div>
+              <span className="path-arrow" aria-hidden="true">↗</span>
+            </Link>
           </div>
-        )}
-      </section>
+        </PublicSection>
 
-      <section className="container" style={{ marginTop: 56 }}>
-        <div data-reveal style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
-          <h2 className="section-title">Musicians to watch</h2>
-          <Link to="/musicians" className="muted" style={{ fontSize: 14 }}>View all →</Link>
-        </div>
-        {loading ? (
-          <Loader>Loading musicians…</Loader>
-        ) : error ? (
-          <LoadError what="musicians" error={error} onRetry={retry} />
-        ) : (
-          <div className="grid grid-2">
-            {musicians.map((musician) => <MusicianCard key={musician.id} musician={musician} />)}
+        <PublicSection
+          eyebrow="Out in the world"
+          title="Opportunities with a date, a place, and a point of view."
+          description="A useful gig listing tells you enough to decide whether the room, the work, and the moment are right."
+          action={<Link to="/gigs" className="text-link">See all gigs <span aria-hidden="true">↗</span></Link>}
+          className="home-discovery"
+        >
+          {loading ? (
+            <Loader>Finding current gigs…</Loader>
+          ) : error ? (
+            <LoadError what="current gigs" error={error} onRetry={retry} />
+          ) : gigs.length ? (
+            <div className="grid grid-3 home-gig-grid">
+              {gigs.map((gig) => <GigCard key={gig.id} gig={gig} />)}
+            </div>
+          ) : (
+            <EmptyState
+              title="No public gigs yet"
+              message="New opportunities will appear here as organizers publish them."
+              action={<Link to="/signup" className="btn small">Get notified</Link>}
+            />
+          )}
+        </PublicSection>
+
+        <PublicSection
+          eyebrow="People in the network"
+          title="Meet the people behind the sound."
+          description="Profiles are more useful when they show the person, the practice, and the kind of room they know how to make."
+          action={<Link to="/musicians" className="text-link">Browse musicians <span aria-hidden="true">↗</span></Link>}
+          className="home-discovery home-people"
+        >
+          {loading ? (
+            <Loader>Finding musicians…</Loader>
+          ) : error ? (
+            <LoadError what="musicians" error={error} onRetry={retry} />
+          ) : musicians.length ? (
+            <div className="grid grid-2 home-musician-grid">
+              {musicians.map((musician) => <MusicianCard key={musician.id} musician={musician} />)}
+            </div>
+          ) : (
+            <EmptyState
+              title="The network is warming up"
+              message="Public musician profiles will appear here as people complete them."
+              action={<Link to="/signup" className="btn small">Build a profile</Link>}
+            />
+          )}
+        </PublicSection>
+
+        <PublicSection
+          eyebrow="How it works"
+          title="Less searching. More making."
+          description="iConnect keeps the public path simple: see what is happening, understand the fit, and make the next move when it feels right."
+          className="home-process"
+        >
+          <ol className="process-list">
+            <li>
+              <span className="process-number">01</span>
+              <div><h3>See the room</h3><p>Explore gigs, musicians, venues, and the details that make a booking make sense.</p></div>
+            </li>
+            <li>
+              <span className="process-number">02</span>
+              <div><h3>Find the fit</h3><p>Use clear signals—genre, place, date, availability, and story—to narrow the field.</p></div>
+            </li>
+            <li>
+              <span className="process-number">03</span>
+              <div><h3>Make a connection</h3><p>Join when you are ready to apply, present your work, post an opportunity, or start a conversation.</p></div>
+            </li>
+          </ol>
+        </PublicSection>
+
+        <section className="home-closing" aria-labelledby="home-closing-title">
+          <div>
+            <p className="section-eyebrow">Keep the signal strong</p>
+            <h2 id="home-closing-title">The right room starts with the right connection.</h2>
           </div>
-        )}
-      </section>
+          <div className="home-closing-actions">
+            <Link to="/gigs" className="btn primary">Explore gigs</Link>
+            {!user && <Link to="/signup" className="btn home-closing-secondary">Join iConnect</Link>}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
