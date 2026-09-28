@@ -13,13 +13,21 @@ const STOPWORDS = new Set([
   'more', 'most', 'some', 'any', 'all', 'each', 'every', 'both', 'few',
   'many', 'much', 'such', 'here', 'there', 'today', 'welcome', 'back',
   'thanks', 'thank', 'watching', 'hello', 'hi', 'okay', 'right', 'now',
+  // filler that pollutes titles/hashtags/chapters
+  'actually', 'really', 'thing', 'things', 'need', 'needs', 'needed', 'want',
+  'wants', 'make', 'makes', 'made', 'get', 'gets', 'got', 'use', 'used',
+  'using', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+  'nine', 'ten', 'first', 'second', 'third', 'next', 'finally', 'simple',
+  'simply', 'say', 'said', 'see', 'look', 'show', 'shows', 'shown', 'let',
+  'lets', 'take', 'takes', 'give', 'gives', 'going', 'come', 'comes', 'ever',
+  'everyone', 'someone', 'anything', 'everything', 'nothing', 'bit', 'lot',
 ]);
 
 export function extractKeywords(text, { limit = 12 } = {}) {
   const tokens = String(text || '')
     .toLowerCase()
     .split(/[^a-z0-9']+/)
-    .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+    .filter((w) => w.length >= 3 && !STOPWORDS.has(w) && !/^\d+$/.test(w));
   const freq = new Map();
   tokens.forEach((w, i) => {
     const entry = freq.get(w) || { count: 0, first: i };
@@ -117,11 +125,11 @@ const TITLE_TEMPLATES = [
 ];
 
 function topicPhrase(context) {
-  const { video = {}, transcript = [] } = context;
-  const title = String(video.title || '').trim();
+  const kws = extractKeywords(transcriptText(context), { limit: 2 });
+  if (kws.length > 0) return titleCase(kws.join(' '));
+  const title = String(context.video?.title || '').trim();
   if (title) return clampWords(title.replace(/[.!?]+$/, ''), 48);
-  const text = (transcript || []).map((s) => s.text).join(' ');
-  return titleCase(extractKeywords(text, { limit: 2 }).join(' ')) || 'This Video';
+  return 'This Video';
 }
 
 function transcriptText(context) {
@@ -133,12 +141,23 @@ function transcriptText(context) {
 }
 
 function buildTitles(context) {
-  const topic = topicPhrase(context);
-  return TITLE_TEMPLATES.map((t) => ({
+  const kws = extractKeywords(transcriptText(context), { limit: 3 });
+  const kwTopic = titleCase(kws.slice(0, 2).join(' '));
+  const topic = kwTopic || topicPhrase(context);
+  const titles = TITLE_TEMPLATES.map((t) => ({
     text: clampWords(t.make(topic), 70),
     rationale: `Leads with the core topic "${topic}" using a ${t.angle}.`,
     score: t.score,
   }));
+  const current = String(context.video?.title || '').trim();
+  if (current) {
+    titles[4] = {
+      text: clampWords(current, 70),
+      rationale: 'Your current upload title, kept as a control to A/B against the options above.',
+      score: 0.78,
+    };
+  }
+  return titles;
 }
 
 function buildDescription(context, chapters, hashtags) {
@@ -178,7 +197,9 @@ function buildTags(context) {
 }
 
 function buildHashtags(context) {
-  const kws = extractKeywords(transcriptText(context), { limit: 4 });
+  const kws = extractKeywords(transcriptText(context), { limit: 8 })
+    .filter((k) => /^[a-z]+$/.test(k))
+    .slice(0, 4);
   return kws.map((k) => `#${titleCase(k).replace(/\s+/g, '')}`);
 }
 

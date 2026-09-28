@@ -31,8 +31,16 @@ describe('metadata generation', () => {
     expect(meta.titles).toHaveLength(5);
     for (const t of meta.titles) {
       expect(t.text.length).toBeLessThanOrEqual(70);
+      expect(t.text.split('…').length).toBeLessThanOrEqual(2); // at most one ellipsis
       expect(t.rationale).toBeTruthy();
       expect(t.score).toBeGreaterThan(0);
+    }
+    // clean hashtags: no numeric tokens like '#2000'
+    expect(meta.hashtags.every((h) => /^#[A-Za-z][A-Za-z]*$/.test(h))).toBe(true);
+    // chapter labels must not be numeric junk
+    for (const ch of meta.chapters) {
+      expect(ch.label).not.toMatch(/^\d+$/);
+      expect(ch.label).not.toMatch(/\b\d{3,}\b/);
     }
     expect(meta.chapters.length).toBeGreaterThanOrEqual(3);
     expect(meta.chapters[0]).toMatchObject({ time: '0:00', seconds: 0 });
