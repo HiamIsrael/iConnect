@@ -1,0 +1,23 @@
+{
+  "name": "creatordesk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CreatorDesk — YouTube Studio AI workbench: titles, chapters, descriptions, thumbnails, analysis, channel insights.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch server/index.js",
+    "start": "node server/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2",
+    "vitest": "^2.1.9"
+  }
+}
