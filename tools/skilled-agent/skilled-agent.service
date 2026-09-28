@@ -1,0 +1,13 @@
+# systemd unit (no Docker): sudo cp skilled-agent.service /etc/systemd/system/ && sudo systemctl enable --now skilled-agent
+[Unit]
+Description=Skilled Agent (web UI, Telegram/WhatsApp channels, scheduler)
+After=network-online.target
+[Service]
+Type=simple
+WorkingDirectory=/opt/skilled-agent
+EnvironmentFile=/opt/skilled-agent/.env
+ExecStart=/usr/bin/node bin/agent.js serve
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

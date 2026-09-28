@@ -1,0 +1,16 @@
+services:
+  agent:
+    build: .
+    image: skilled-agent
+    container_name: skilled-agent
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./workspace:/workspace     # the directory the agent works in (mount your projects here)
+      - agent-data:/data           # sessions, memory, scheduled jobs
+      # - ~/.gitconfig:/home/node/.gitconfig:ro
+      # - ~/.ssh:/home/node/.ssh:ro
+volumes:
+  agent-data:

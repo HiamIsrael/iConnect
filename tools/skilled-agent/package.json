@@ -1,0 +1,20 @@
+{
+  "name": "skilled-agent",
+  "version": "0.2.0",
+  "description": "A general-purpose AI agent (CLI + Web + Telegram + WhatsApp) powered by the Agent Skills pack, any OpenAI-compatible LLM, and a rich tool belt: shell, files, git, web, python, memory, sub-agents, scheduler, MCP, voice.",
+  "type": "module",
+  "private": true,
+  "bin": { "agent": "./bin/agent.js" },
+  "scripts": {
+    "start": "node bin/agent.js",
+    "web": "node bin/agent.js serve",
+    "telegram": "node bin/agent.js telegram",
+    "test": "node --test test/*.test.js",
+    "skills:sync": "python3 scripts/sync_skills.py",
+    "skills:verify": "python3 scripts/sync_skills.py --verify",
+    "docker:build": "docker build -t skilled-agent .",
+    "docker:up": "docker compose up -d"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

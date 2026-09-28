@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skilled Agent</title>
+<style>
+  :root { --bg:#0b0d12; --panel:#12151d; --panel2:#181c26; --line:#252a37; --text:#e6e8ef; --muted:#8b91a5; --accent:#6ea8fe; --ok:#4ade80; --warn:#fbbf24; --err:#f87171; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; height:100vh; display:grid; grid-template-columns:260px 1fr 320px; grid-template-rows:48px 1fr; }
+  header { grid-column:1/-1; display:flex; align-items:center; gap:14px; padding:0 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header h1 { font-size:15px; margin:0; }
+  header .status { color:var(--muted); font-size:12px; display:flex; gap:12px; margin-left:auto; align-items:center; }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--err); display:inline-block; margin-right:6px; }
+  .dot.ok { background:var(--ok); }
+  .badge { border:1px solid var(--line); border-radius:999px; padding:1px 8px; font-size:11px; }
+  .badge.on { border-color:var(--ok); color:var(--ok); }
+  aside { background:var(--panel); border-right:1px solid var(--line); overflow:auto; padding:12px; }
+  aside.right { border-right:0; border-left:1px solid var(--line); }
+  aside h3 { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:14px 0 6px; }
+  .list button, .list .item { display:block; width:100%; text-align:left; background:transparent; color:var(--text); border:0; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:13px; }
+  .list button:hover, .list .item:hover { background:var(--panel2); }
+  .list button.active { background:var(--panel2); color:var(--accent); }
+  .list small { display:block; color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  main { display:flex; flex-direction:column; min-width:0; }
+  #log { flex:1; overflow:auto; padding:20px 24px; scroll-behavior:smooth; }
+  .msg { max-width:900px; margin:0 auto 18px; }
+  .msg .who { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:4px; }
+  .msg.user .body { background:var(--panel2); border:1px solid var(--line); padding:10px 14px; border-radius:10px; white-space:pre-wrap; }
+  .msg.assistant .body { white-space:pre-wrap; }
+  .msg.assistant .body pre { background:#0f1218; border:1px solid var(--line); padding:10px; border-radius:8px; overflow:auto; font-family:var(--mono); font-size:12.5px; }
+  .msg.assistant .body code { font-family:var(--mono); font-size:12.5px; background:#0f1218; padding:1px 4px; border-radius:4px; }
+  .tool { max-width:900px; margin:0 auto 10px; border:1px solid var(--line); border-left:3px solid var(--warn); border-radius:8px; background:var(--panel); font-size:12.5px; }
+  .tool.sub { border-left-color:#c084fc; }
+  .tool summary { padding:6px 10px; cursor:pointer; font-family:var(--mono); color:var(--warn); display:flex; gap:8px; align-items:center; }
+  .tool.sub summary { color:#c084fc; }
+  .tool summary .ms { margin-left:auto; color:var(--muted); font-size:11px; }
+  .tool pre { margin:0; padding:8px 10px; border-top:1px solid var(--line); font-family:var(--mono); font-size:12px; max-height:320px; overflow:auto; white-space:pre-wrap; color:#c7cbd6; }
+  .tool pre.args { color:var(--muted); }
+  .spinner { display:inline-block; width:10px; height:10px; border:2px solid var(--warn); border-top-color:transparent; border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .approval { max-width:900px; margin:0 auto 12px; border:1px solid var(--err); background:#2a1414; padding:10px 14px; border-radius:8px; }
+  .approval button { margin-right:8px; }
+  form { border-top:1px solid var(--line); padding:12px 24px; background:var(--panel); display:flex; gap:10px; align-items:flex-end; }
+  textarea { flex:1; resize:none; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; min-height:44px; max-height:200px; }
+  button { background:var(--accent); color:#0b0d12; border:0; border-radius:8px; padding:9px 14px; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  button.ghost.on { color:var(--ok); border-color:var(--ok); }
+  button.ghost.rec { color:var(--err); border-color:var(--err); animation:pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity:.5; } }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .err { color:var(--err); }
+  input, select { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; width:100%; }
+  #skilldoc { position:fixed; inset:5% 10%; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; overflow:auto; display:none; white-space:pre-wrap; font-family:var(--mono); font-size:12.5px; z-index:10; }
+  .empty { color:var(--muted); text-align:center; margin-top:80px; }
+  .empty .chips { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:16px; }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:6px 12px; cursor:pointer; font-size:13px; color:var(--text); background:var(--panel); }
+  .chip:hover { border-color:var(--accent); }
+  @media (max-width:900px) { body { grid-template-columns:1fr; } aside { display:none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Skilled Agent</h1>
+  <div class="status">
+    <span id="st-model"></span>
+    <span id="st-wd" title="working directory"></span>
+    <span id="st-ch"></span>
+    <span><span id="st-dot" class="dot"></span><span id="st-conn">connecting…</span></span>
+  </div>
+</header>
+
+<aside>
+  <button id="new" style="width:100%">+ New session</button>
+  <h3>Sessions</h3>
+  <div id="sessions" class="list"></div>
+  <h3>Settings</h3>
+  <label style="font-size:12px;color:var(--muted)">Model<input id="cfg-model" /></label>
+  <label style="font-size:12px;color:var(--muted);display:block;margin-top:6px">Working dir<input id="cfg-wd" /></label>
+  <label style="font-size:12px;color:var(--muted);display:block;margin-top:6px">Approval<select id="cfg-appr"><option value="auto">auto</option><option value="ask">ask</option><option value="deny">deny</option></select></label>
+  <button class="ghost" id="cfg-save" style="margin-top:8px;width:100%">Apply</button>
+</aside>
+
+<main>
+  <div id="log"></div>
+  <form id="f">
+    <textarea id="in" placeholder="Ask anything… or use the mic. e.g. “Set up a Node API with tests”, “Research X and write a brief”, “Every weekday at 9am, check the repo and message me on Telegram”" rows="1"></textarea>
+    <button type="button" class="ghost" id="mic" title="Voice input (click to start/stop)">🎤</button>
+    <button type="button" class="ghost" id="spk" title="Read replies aloud">🔈</button>
+    <button type="submit" id="send">Send</button>
+    <button type="button" class="ghost" id="stop" disabled>Stop</button>
+  </form>
+</main>
+
+<aside class="right">
+  <h3>Skills <span id="skillcount" style="color:var(--muted)"></span></h3>
+  <div id="skills" class="list"></div>
+  <h3>Memory</h3>
+  <div id="memory" class="list"></div>
+  <h3>Scheduled tasks</h3>
+  <div id="jobs" class="list"></div>
+  <h3>Tools</h3>
+  <div id="tools" style="font-size:11px;color:var(--muted);line-height:1.7"></div>
+</aside>
+
+<div id="skilldoc" onclick="this.style.display='none'"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const log = $('#log');
+let session = localStorage.getItem('session') || 'web-default';
+let es, curText = null, curTools = {}, busy = false, speak = localStorage.getItem('speak') === '1', serverStt = false;
+
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function md(s) {
+  let out = '', parts = s.split(/```/);
+  parts.forEach((p, i) => {
+    if (i % 2) { const nl = p.indexOf('\n'); out += `<pre>${esc(nl >= 0 ? p.slice(nl + 1) : p)}</pre>`; }
+    else out += esc(p).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/^(#{1,3}) (.+)$/gm, (_, h, t) => `<b style="font-size:${18 - h.length * 1.5}px">${t}</b>`).replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" style="color:var(--accent)">$1</a>');
+  });
+  return out;
+}
+const scroll = () => { log.scrollTop = log.scrollHeight; };
+function addMsg(role, text) {
+  const d = document.createElement('div'); d.className = `msg ${role}`;
+  d.innerHTML = `<div class="who">${role === 'user' ? 'You' : 'Agent'}</div><div class="body"></div>`;
+  d.querySelector('.body').innerHTML = role === 'user' ? esc(text) : md(text);
+  d.dataset.raw = text; log.appendChild(d); scroll(); return d;
+}
+function setBusy(b) { busy = b; $('#send').disabled = b; $('#stop').disabled = !b; }
+
+// ---- voice output ----
+$('#spk').classList.toggle('on', speak);
+$('#spk').onclick = () => { speak = !speak; localStorage.setItem('speak', speak ? '1' : '0'); $('#spk').classList.toggle('on', speak); if (!speak) speechSynthesis?.cancel(); };
+async function sayAloud(text) {
+  if (!speak || !text) return;
+  const plain = text.replace(/```[\s\S]*?```/g, ' code block omitted. ').replace(/[`*#_>]/g, '').slice(0, 1500);
+  try {
+    const r = await fetch('/api/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: plain }) });
+    if (r.ok) { new Audio(URL.createObjectURL(await r.blob())).play(); return; }
+  } catch {}
+  if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(plain); speechSynthesis.cancel(); speechSynthesis.speak(u); }
+}
+
+// ---- voice input: browser SpeechRecognition → fallback to MediaRecorder + server /api/transcribe ----
+let rec = null, mediaRec = null, chunks = [];
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+$('#mic').onclick = async () => {
+  if (rec || mediaRec) return stopVoice();
+  if (SR && !serverStt) {
+    rec = new SR(); rec.lang = navigator.language || 'en-US'; rec.interimResults = true; rec.continuous = true;
+    let finalText = $('#in').value ? $('#in').value + ' ' : '';
+    rec.onresult = e => { let interim = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += t + ' '; else interim += t; } $('#in').value = finalText + interim; };
+    rec.onerror = ev => { console.warn('SR error', ev.error); if (ev.error === 'not-allowed' || ev.error === 'network') { stopVoice(); serverStt = true; $('#mic').click(); } };
+    rec.onend = () => { if (rec) { rec = null; $('#mic').classList.remove('rec'); } };
+    rec.start(); $('#mic').classList.add('rec'); return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = []; mediaRec = new MediaRecorder(stream);
+    mediaRec.ondataavailable = e => chunks.push(e.data);
+    mediaRec.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: mediaRec.mimeType || 'audio/webm' }); mediaRec = null; $('#mic').classList.remove('rec');
+      $('#in').placeholder = 'Transcribing…';
+      try { const r = await fetch('/api/transcribe', { method: 'POST', headers: { 'content-type': blob.type }, body: blob }); const j = await r.json(); if (j.text) $('#in').value = ($('#in').value + ' ' + j.text).trim(); else if (j.error) alert('Transcription failed: ' + j.error); }
+      catch (e) { alert('Transcription failed: ' + e.message); }
+      $('#in').placeholder = 'Ask anything…';
+    };
+    mediaRec.start(); $('#mic').classList.add('rec');
+  } catch (e) { alert('Microphone unavailable: ' + e.message); }
+};
+function stopVoice() { if (rec) { const r = rec; rec = null; r.stop(); } if (mediaRec) mediaRec.stop(); $('#mic').classList.remove('rec'); }
+
+function handle(e) {
+  switch (e.type) {
+    case 'user': $('.empty')?.remove(); addMsg('user', e.content); setBusy(true); break;
+    case 'text':
+      if (!curText) curText = addMsg('assistant', '');
+      curText.dataset.raw += e.delta; curText.querySelector('.body').innerHTML = md(curText.dataset.raw); scroll(); break;
+    case 'text_end': curText = null; break;
+    case 'tool_call': {
+      curText = null;
+      const d = document.createElement('details'); d.className = 'tool' + (e.sub ? ' sub' : ''); d.id = 't-' + e.id;
+      d.innerHTML = `<summary><span class="spinner"></span>${e.sub ? '↳ ' : ''}${esc(e.name)}<span class="ms"></span></summary><pre class="args">${esc(JSON.stringify(e.args, null, 2))}</pre>`;
+      log.appendChild(d); curTools[e.id] = d; scroll(); break;
+    }
+    case 'tool_result': {
+      const d = curTools[e.id]; if (!d) break;
+      d.querySelector('.spinner')?.remove(); d.querySelector('.ms').textContent = e.ms + 'ms';
+      const pre = document.createElement('pre'); pre.textContent = e.output.length > 6000 ? e.output.slice(0, 6000) + '\n…' : e.output; d.appendChild(pre); scroll(); break;
+    }
+    case 'approval_request': {
+      const d = document.createElement('div'); d.className = 'approval';
+      d.innerHTML = `<b>⚠ Approval needed:</b> <code>${esc(e.name)}</code> ${esc(JSON.stringify(e.args)).slice(0, 400)}<br/><br/><button data-a="1">Allow</button><button class="ghost" data-a="0">Deny</button>`;
+      d.onclick = ev => { const a = ev.target.dataset.a; if (a === undefined) return; fetch('/api/approve', { method: 'POST', body: JSON.stringify({ id: e.id, allow: a === '1' }) }); d.remove(); };
+      log.appendChild(d); scroll(); break;
+    }
+    case 'error': { const d = addMsg('assistant', ''); d.querySelector('.body').innerHTML = `<span class="err">✖ ${esc(e.message)}</span>`; break; }
+    case 'done':
+      if (!e.sub) { curText = null; setBusy(false); sayAloud(e.text); refreshSide(); refreshSessions(); }
+      break;
+  }
+}
+
+function connect() {
+  es?.close();
+  es = new EventSource(`/api/events?session=${encodeURIComponent(session)}`);
+  es.onopen = () => { $('#st-dot').classList.add('ok'); $('#st-conn').textContent = 'connected'; };
+  es.onerror = () => { $('#st-dot').classList.remove('ok'); $('#st-conn').textContent = 'reconnecting…'; };
+  es.onmessage = ev => handle(JSON.parse(ev.data));
+}
+
+async function loadHistory() {
+  log.innerHTML = ''; curText = null; curTools = {};
+  const h = await (await fetch(`/api/history?session=${encodeURIComponent(session)}`)).json();
+  if (!h.length) {
+    log.innerHTML = `<div class="empty"><div style="font-size:32px">⚡</div><div>What should we build, fix, research or automate?</div><div class="chips">
+      <span class="chip">Explore this directory and summarize the project</span>
+      <span class="chip">Write a spec for a new feature, then plan the tasks</span>
+      <span class="chip">Research the latest on a topic and write a brief</span>
+      <span class="chip">Run the tests and fix any failures</span>
+      <span class="chip">Schedule a daily 9am health check of this repo</span></div></div>`;
+    log.querySelectorAll('.chip').forEach(c => c.onclick = () => { $('#in').value = c.textContent; $('#in').focus(); });
+  }
+  h.forEach(m => addMsg(m.role, m.content));
+}
+
+async function send(text) {
+  const r = await fetch('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: text, session }) });
+  if (!r.ok) { const j = await r.json(); addMsg('assistant', '').querySelector('.body').innerHTML = `<span class="err">${esc(j.error)}</span>`; }
+}
+
+$('#f').onsubmit = e => { e.preventDefault(); stopVoice(); const t = $('#in').value.trim(); if (!t || busy) return; $('#in').value = ''; $('#in').style.height = ''; send(t); };
+$('#in').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#f').requestSubmit(); } };
+$('#in').oninput = e => { e.target.style.height = ''; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; };
+$('#stop').onclick = () => fetch('/api/stop', { method: 'POST', body: JSON.stringify({ session }) });
+$('#new').onclick = () => switchSession('s-' + Date.now().toString(36));
+$('#cfg-save').onclick = async () => { await fetch('/api/config', { method: 'POST', body: JSON.stringify({ model: $('#cfg-model').value, workdir: $('#cfg-wd').value, approval: $('#cfg-appr').value }) }); refreshStatus(); };
+
+function switchSession(id) { session = id; localStorage.setItem('session', id); connect(); loadHistory(); refreshSessions(); }
+
+async function refreshStatus() {
+  const s = await (await fetch('/api/status')).json();
+  $('#st-model').textContent = s.model + (s.apiKeySet ? '' : ' (no API key!)');
+  $('#st-wd').textContent = s.workdir;
+  $('#st-ch').innerHTML = `<span class="badge ${s.channels.telegram ? 'on' : ''}">Telegram</span> <span class="badge ${s.channels.whatsapp ? 'on' : ''}">WhatsApp</span> <span class="badge ${s.voice.stt ? 'on' : ''}">STT</span>`;
+  $('#cfg-model').value = s.model; $('#cfg-wd').value = s.workdir; $('#cfg-appr').value = s.approval;
+  $('#skillcount').textContent = `(${s.skills})`;
+}
+async function refreshSessions() {
+  const list = await (await fetch('/api/sessions')).json();
+  $('#sessions').innerHTML = list.map(s => `<button class="${s.id === session ? 'active' : ''}" data-id="${s.id}">${esc(s.title || s.id)}<small>${s.id} · ${s.turns} turns</small></button>`).join('') || '<small style="color:var(--muted)">none yet</small>';
+  $('#sessions').querySelectorAll('button').forEach(b => b.onclick = () => switchSession(b.dataset.id));
+}
+async function refreshSide() {
+  const [skills, mem, jobs, tools] = await Promise.all(['/api/skills', '/api/memory', '/api/jobs', '/api/tools'].map(u => fetch(u).then(r => r.json())));
+  $('#skills').innerHTML = skills.map(s => `<button data-id="${s.id}" title="${esc(s.description)}">${s.id}<small>${s.phase}</small></button>`).join('');
+  $('#skills').querySelectorAll('button').forEach(b => b.onclick = async () => { $('#skilldoc').textContent = await (await fetch(`/api/skills?name=${b.dataset.id}`)).text(); $('#skilldoc').style.display = 'block'; });
+  $('#memory').innerHTML = mem.map(m => `<div class="item"><b>${esc(m.key)}</b> <span style="float:right;cursor:pointer;color:var(--muted)" data-k="${esc(m.key)}">✕</span><small>${esc(String(m.value))}</small></div>`).join('') || '<small style="color:var(--muted)">empty</small>';
+  $('#memory').querySelectorAll('[data-k]').forEach(x => x.onclick = async () => { await fetch(`/api/memory?key=${encodeURIComponent(x.dataset.k)}`, { method: 'DELETE' }); refreshSide(); });
+  $('#jobs').innerHTML = jobs.map(j => `<div class="item"><b>${esc(j.name)}</b> <span style="float:right;cursor:pointer;color:var(--muted)" data-j="${j.id}">✕</span><small>next: ${j.nextRunAt ? new Date(j.nextRunAt).toLocaleString() : '—'} · runs ${j.runs}${j.notify ? ' · → ' + esc(j.notify) : ''}</small></div>`).join('') || '<small style="color:var(--muted)">none</small>';
+  $('#jobs').querySelectorAll('[data-j]').forEach(x => x.onclick = async () => { await fetch(`/api/jobs?id=${x.dataset.j}`, { method: 'DELETE' }); refreshSide(); });
+  $('#tools').textContent = tools.map(t => t.name).join(' · ');
+}
+
+connect(); loadHistory(); refreshStatus(); refreshSessions(); refreshSide();
+setInterval(refreshSide, 30000);
+</script>
+</body>
+</html>
