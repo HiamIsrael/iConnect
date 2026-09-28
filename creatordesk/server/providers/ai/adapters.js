@@ -1,6 +1,9 @@
 import { providerError, unsupported } from '../../errors.js';
 import { buildPrompt, parseModelJson } from './prompts.js';
 
+const TIMEOUT_MS = Number(process.env.CREATORDESK_HTTP_TIMEOUT_MS) || 15000;
+const signal = () => AbortSignal.timeout(TIMEOUT_MS);
+
 /**
  * OpenAI adapter (chat completions + images) over plain fetch.
  * `fetchImpl` is injectable for tests — no network in CI.
@@ -16,6 +19,7 @@ export function createOpenAIProvider(cfg, { fetchImpl = fetch } = {}) {
     const res = await fetchImpl('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      signal: signal(),
       body: JSON.stringify({
         model,
         temperature: 0.4,
@@ -39,6 +43,7 @@ export function createOpenAIProvider(cfg, { fetchImpl = fetch } = {}) {
       const res = await fetchImpl('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+        signal: signal(),
         body: JSON.stringify({ model: imageModel, prompt, n: 1, size: '1024x1024', response_format: 'b64_json' }),
       });
       if (!res.ok) throw providerError(`OpenAI image request failed (HTTP ${res.status})`);
@@ -68,6 +73,7 @@ export function createAnthropicProvider(cfg, { fetchImpl = fetch } = {}) {
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
         },
+        signal: signal(),
         body: JSON.stringify({ model, max_tokens: 4096, system, messages: [{ role: 'user', content: user }] }),
       });
       if (!res.ok) throw providerError(`Anthropic request failed (HTTP ${res.status})`);
@@ -95,6 +101,7 @@ export function createGeminiProvider(cfg, { fetchImpl = fetch } = {}) {
       const res = await fetchImpl(`${base}/${model}:generateContent?key=${encodeURIComponent(key)}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        signal: signal(),
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: 'user', parts: [{ text: user }] }],
@@ -109,6 +116,7 @@ export function createGeminiProvider(cfg, { fetchImpl = fetch } = {}) {
       const res = await fetchImpl(`${base}/gemini-2.0-flash-preview-image-generation:generateContent?key=${encodeURIComponent(key)}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        signal: signal(),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },

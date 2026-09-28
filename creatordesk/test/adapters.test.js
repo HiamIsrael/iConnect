@@ -202,10 +202,7 @@ describe('youtube live adapter', () => {
   it('maps empty video lookups to NOT_FOUND and uploads thumbnails as multipart', async () => {
     const fetchImpl = stubFetch([
       ['oauth2.googleapis.com/token', () => ({ body: { access_token: 'at-1', expires_in: 3600 } })],
-      ['/videos?', (init) => {
-        if (init.url?.includes?.('thumbnails') || String(init).includes('x')) { /* noop */ }
-        return { body: { items: [] } };
-      }],
+      ['/videos?', () => ({ body: { items: [] } })],
       ['/upload/youtube/v3/thumbnails/set', () => ({ body: {} })],
     ]);
     const p = getYoutubeProvider(cfg, { fetchImpl });

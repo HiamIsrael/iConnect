@@ -5,6 +5,10 @@
 > standalone app in this repo · real YouTube API + demo mode · pluggable AI with
 > deterministic mock default · thumbnail briefs/prompts always + images when the
 > provider supports them.
+> **Status (2026-09-28): implemented.** Success criteria 1–5 verified (55/55
+> tests green with zero env vars; live-preview workflow checked against the demo
+> channel). Criterion 6 (live providers) is implemented and covered by
+> stubbed-fetch tests; end-to-end verification awaits real user credentials.
 
 ## Objective
 

@@ -73,6 +73,7 @@ Commit these alongside the code they describe.
 | `.gemini/commands/` | Gemini CLI | the same nine lifecycle commands as TOML |
 | `skills-lock.json` | `npx skills` | pinned source + content hashes |
 | `tools/skills-browser/` | humans | local UI to browse everything above |
+| `creatordesk/` | humans | **CreatorDesk** — standalone YouTube Studio AI workbench (see `creatordesk/README.md`, spec in `SPEC.md`) |
 
 Agents without slash commands invoke skills by name (e.g. Codex:
 `@spec-driven-development`; Copilot: `/spec-driven-development`).

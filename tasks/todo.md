@@ -1,7 +1,7 @@
 # Tasks: CreatorDesk
 
-> Produced by `planning-and-task-breakdown`. Status markers are updated as
-> work lands. Each task: one focused session, ≤5 files, explicit verification.
+> Produced by `planning-and-task-breakdown`. Status: **all tasks complete** (2026-09-28).
+> All acceptance criteria verified: `cd creatordesk && npm test` → 55/55 green. Each task: one focused session, ≤5 files, explicit verification.
 
 ## Task 1: App shell — package, config, createApp, health
 
@@ -10,9 +10,9 @@
 static `web/` placeholder, `server/index.js` entry on `0.0.0.0:4180`.
 
 **Acceptance criteria:**
-- [ ] `GET /api/health` returns `{ ok, name: 'creatordesk', version, youtube, ai }`
-- [ ] `createApp()` does not listen; `server/index.js` does
-- [ ] Error responses use the structured `{ error: { code, message } }` shape
+- [x] `GET /api/health` returns `{ ok, name: 'creatordesk', version, youtube, ai }`
+- [x] `createApp()` does not listen; `server/index.js` does
+- [x] Error responses use the structured `{ error: { code, message } }` shape
 
 **Verification:** `npx vitest run -t "health"`; `npm test`; `curl localhost:4180/api/health`
 
@@ -26,9 +26,9 @@ description composition, tags/hashtags, thumbnail briefs + prompts, SVG
 thumbnail images, analysis heuristics.
 
 **Acceptance criteria:**
-- [ ] Registry selects `mock` by default; shape documented in one place
-- [ ] Same input → byte-identical output (determinism test)
-- [ ] Pure helpers unit-tested (keywords, chapters, title shaping)
+- [x] Registry selects `mock` by default; shape documented in one place
+- [x] Same input → byte-identical output (determinism test)
+- [x] Pure helpers unit-tested (keywords, chapters, title shaping)
 
 **Verification:** `npx vitest run -t "mock provider"` + unit tests green
 
@@ -40,9 +40,9 @@ thumbnail images, analysis heuristics.
 channel and 5 videos (stats, tags, timestamped transcripts).
 
 **Acceptance criteria:**
-- [ ] `getChannel/listVideos/getVideo` return deterministic demo data
-- [ ] `updateVideo/setThumbnail` record mutations in-memory and are visible via getters
-- [ ] Unknown video id → provider throws NotFound error mapped to 404
+- [x] `getChannel/listVideos/getVideo` return deterministic demo data
+- [x] `updateVideo/setThumbnail` record mutations in-memory and are visible via getters
+- [x] Unknown video id → provider throws NotFound error mapped to 404
 
 **Verification:** `npx vitest run -t "youtube mock"` green
 
@@ -54,9 +54,9 @@ channel and 5 videos (stats, tags, timestamped transcripts).
 YouTube provider registry with structured errors.
 
 **Acceptance criteria:**
-- [ ] Endpoints return documented shapes; 404 for unknown ids
-- [ ] Transcript segments included on detail
-- [ ] No secrets anywhere in responses
+- [x] Endpoints return documented shapes; 404 for unknown ids
+- [x] Transcript segments included on detail
+- [x] No secrets anywhere in responses
 
 **Verification:** `npx vitest run -t "channel"` / `-t "videos"` green
 
@@ -70,9 +70,9 @@ YouTube provider registry with structured errors.
 producing titles/chapters/description/tags/hashtags via the AI provider.
 
 **Acceptance criteria:**
-- [ ] 5 titles with rationale + score; ≤70 chars
-- [ ] Chapters: first `0:00`, 3–8 chapters, formatted block matches structured output
-- [ ] Validation errors → 400 `VALIDATION_ERROR`
+- [x] 5 titles with rationale + score; ≤70 chars
+- [x] Chapters: first `0:00`, 3–8 chapters, formatted block matches structured output
+- [x] Validation errors → 400 `VALIDATION_ERROR`
 
 **Verification:** `npx vitest run -t "metadata"` green (incl. round-trip test)
 
@@ -84,9 +84,9 @@ producing titles/chapters/description/tags/hashtags via the AI provider.
 3 briefs, 3 prompts, images when provider supports them (mock → SVG data URLs).
 
 **Acceptance criteria:**
-- [ ] Briefs contain concept/hookText/layout/colors/composition/mood
-- [ ] Prompts are copy-paste ready for image models
-- [ ] Mock images are deterministic SVG data URLs
+- [x] Briefs contain concept/hookText/layout/colors/composition/mood
+- [x] Prompts are copy-paste ready for image models
+- [x] Mock images are deterministic SVG data URLs
 
 **Verification:** `npx vitest run -t "thumbnail"` green
 
@@ -98,9 +98,9 @@ producing titles/chapters/description/tags/hashtags via the AI provider.
 summary, strengths/weaknesses, improvements, SEO checks, retention notes.
 
 **Acceptance criteria:**
-- [ ] Output matches SPEC `analyze-content` shape exactly
-- [ ] SEO checks include named checks with passed flags
-- [ ] Improvements carry area/suggestion/impact/effort
+- [x] Output matches SPEC `analyze-content` shape exactly
+- [x] SEO checks include named checks with passed flags
+- [x] Improvements carry area/suggestion/impact/effort
 
 **Verification:** `npx vitest run -t "analyze"` green
 
@@ -112,8 +112,8 @@ summary, strengths/weaknesses, improvements, SEO checks, retention notes.
 overview, performance metrics, whatWorks, opportunities, prioritized roadmap.
 
 **Acceptance criteria:**
-- [ ] Roadmap items carry priority/action/why/effort
-- [ ] Output derived from the channel's videos (content-dependent, stable)
+- [x] Roadmap items carry priority/action/why/effort
+- [x] Output derived from the channel's videos (content-dependent, stable)
 
 **Verification:** `npx vitest run -t "insights"` green
 
@@ -127,8 +127,8 @@ overview, performance metrics, whatWorks, opportunities, prioritized roadmap.
 returning `{ markdown, json }` of all generated assets for a video.
 
 **Acceptance criteria:**
-- [ ] Markdown includes title options, chapters, description, tags, thumbnail briefs, analysis
-- [ ] Works with zero YouTube write access
+- [x] Markdown includes title options, chapters, description, tags, thumbnail briefs, analysis
+- [x] Works with zero YouTube write access
 
 **Verification:** `npx vitest run -t "export"` green
 
@@ -141,9 +141,9 @@ mock mode records audit log entry via `store.js`; live mode delegates to
 YouTube provider `updateVideo`/`setThumbnail` (adapter in T11).
 
 **Acceptance criteria:**
-- [ ] Missing `confirm` → 400 `NOT_CONFIRMED`; nothing written
-- [ ] Mock publish updates the demo video + audit log entry
-- [ ] Audit entries readable via store (test)
+- [x] Missing `confirm` → 400 `NOT_CONFIRMED`; nothing written
+- [x] Mock publish updates the demo video + audit log entry
+- [x] Audit entries readable via store (test)
 
 **Verification:** `npx vitest run -t "publish"` green
 
@@ -158,9 +158,9 @@ YouTube provider `updateVideo`/`setThumbnail` (adapter in T11).
 OAuth refresh-token flow for YouTube writes.
 
 **Acceptance criteria:**
-- [ ] Each adapter maps provider responses to the canonical shapes
-- [ ] Malformed model output → `PROVIDER_ERROR`
-- [ ] Unit tests use a stub `fetch`; zero network in CI
+- [x] Each adapter maps provider responses to the canonical shapes
+- [x] Malformed model output → `PROVIDER_ERROR`
+- [x] Unit tests use a stub `fetch`; zero network in CI
 
 **Verification:** `npx vitest run -t "adapters"` green
 
@@ -172,9 +172,9 @@ OAuth refresh-token flow for YouTube writes.
 banner, channel card, video list with stats.
 
 **Acceptance criteria:**
-- [ ] Relative `/api` calls only; works behind sandbox preview hosts
-- [ ] Video list renders from `/api/videos`; click opens workspace
-- [ ] Responsive ≥380px
+- [x] Relative `/api` calls only; works behind sandbox preview hosts
+- [x] Video list renders from `/api/videos`; click opens workspace
+- [x] Responsive ≥380px
 
 **Verification:** manual check in preview + `npm test` still green
 
@@ -186,9 +186,9 @@ banner, channel card, video list with stats.
 generate buttons call the POST endpoints; Export tab shows the Markdown bundle.
 
 **Acceptance criteria:**
-- [ ] All 4 actions usable end-to-end against demo channel
-- [ ] Copy buttons work (clipboard API with fallback)
-- [ ] Loading + error states render the structured error message
+- [x] All 4 actions usable end-to-end against demo channel
+- [x] Copy buttons work (clipboard API with fallback)
+- [x] Loading + error states render the structured error message
 
 **Verification:** manual check in preview
 
@@ -200,9 +200,9 @@ generate buttons call the POST endpoints; Export tab shows the Markdown bundle.
 no keys), Publish button with confirm dialog + result feedback.
 
 **Acceptance criteria:**
-- [ ] Publish requires explicit confirm in UI; result + mode shown
-- [ ] Insights renders roadmap sorted by priority
-- [ ] Keyboard-accessible dialogs
+- [x] Publish requires explicit confirm in UI; result + mode shown
+- [x] Insights renders roadmap sorted by priority
+- [x] Keyboard-accessible dialogs
 
 **Verification:** manual check in preview
 
@@ -217,16 +217,16 @@ architecture), ADR for provider-registry decision, then
 `code-review-and-quality` + `security-and-hardening` passes.
 
 **Acceptance criteria:**
-- [ ] README accurate (commands verified)
-- [ ] ADR committed under `docs/adr/`
-- [ ] Review checklists run; findings fixed or recorded
-- [ ] Full `npm test` green at final commit
+- [x] README accurate (commands verified)
+- [x] ADR committed under `docs/adr/`
+- [x] Review checklists run; findings fixed or recorded
+- [x] Full `npm test` green at final commit
 
 **Verification:** `npm test`; review checklists in `.agents/references/`
 
 **Dependencies:** T14 · **Files:** `creatordesk/README.md`, `docs/adr/*`, fixes as needed · **Size:** M
 
 ## Checkpoint: Final
-- [ ] All tests pass (`cd creatordesk && npm test`)
-- [ ] App runs via `npm run dev` and the full workflow works on the demo channel
-- [ ] Spec + map + tasks reflect reality
+- [x] All tests pass (`cd creatordesk && npm test`)
+- [x] App runs via `npm run dev` and the full workflow works on the demo channel
+- [x] Spec + map + tasks reflect reality

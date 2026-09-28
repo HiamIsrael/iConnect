@@ -2,6 +2,11 @@
 
 > The marketplace connecting musicians with gigs.
 
+> **Also in this repo:** [`creatordesk/`](./creatordesk/) — **CreatorDesk**, a
+> standalone YouTube Studio AI workbench (titles, chapters, descriptions,
+> thumbnails, content/channel analysis) built with the repo's agent skills.
+> See [`creatordesk/README.md`](./creatordesk/README.md) and [`SPEC.md`](./SPEC.md).
+
 > **Deployment:** Render users should follow
 > [`DEPLOYMENT_RENDER.md`](./DEPLOYMENT_RENDER.md) (one-click blueprint, includes
 > the repo's `render.yaml`). All options are in
