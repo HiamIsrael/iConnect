@@ -1,41 +1,26 @@
 import express from 'express';
 import path from 'node:path';
 import { config } from './config.js';
-import { ApiError, notFound } from './errors.js';
+import { getAiProvider } from './providers/ai/index.js';
+import { getYoutubeProvider } from './providers/youtube/index.js';
+import { createApiRouter } from './routes.js';
 
 // Re-export the structured error helpers (single source: server/errors.js).
-export { ApiError, notFound, validationError, providerError } from './errors.js';
-
-/** Wrap an async route handler so thrown ApiErrors reach the error middleware. */
-export function ah(fn) {
-  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-}
+export { ApiError, notFound, validationError, providerError, ah } from './errors.js';
 
 /**
  * Build the CreatorDesk express app. Does not listen — `server/index.js`
- * (or tests) decide that.
+ * (or tests) decide that. Providers are resolved from config unless injected
+ * (tests may pass stubs).
  */
-export function createApp() {
+export function createApp({ ai, youtube } = {}) {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
 
-  app.get('/api/health', (req, res) => {
-    res.json({
-      ok: true,
-      name: config.name,
-      version: config.version,
-      youtube: config.youtube.provider,
-      ai: {
-        provider: config.ai.provider,
-        supportsImages: config.ai.provider === 'mock' || config.ai.provider === 'openai' || config.ai.provider === 'gemini',
-      },
-    });
-  });
+  const aiProvider = ai || getAiProvider(config);
+  const youtubeProvider = youtube || getYoutubeProvider(config);
 
-  // Unknown API routes → structured 404.
-  app.use('/api', (req, res, next) => {
-    next(notFound(`No such endpoint: ${req.method} ${req.path}`));
-  });
+  app.use('/api', createApiRouter({ ai: aiProvider, youtube: youtubeProvider }));
 
   // Static web workbench (no-build vanilla UI). Fallback to index.html for
   // client-side view routing; /api/* is already handled above.

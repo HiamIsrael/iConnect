@@ -20,5 +20,10 @@ export const providerError = (message, details) =>
   new ApiError(502, 'PROVIDER_ERROR', message, details);
 export const notConfirmed = (message = 'Refusing to publish without explicit confirmation') =>
   new ApiError(400, 'NOT_CONFIRMED', message);
+/** Wrap an async route handler so thrown ApiErrors reach the error middleware. */
+export function ah(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+}
+
 export const unsupported = (message) =>
   new ApiError(501, 'UNSUPPORTED', message);
