@@ -39,6 +39,10 @@ npm test             # full suite — works with zero env vars (mock everything)
 
 ### AI providers (optional)
 
+> Full walkthrough with console links, costs, and the OAuth gotchas:
+> **[`GO-LIVE.md`](./GO-LIVE.md)** — including `npm run youtube-token`, the
+> included helper that prints a ready-to-export `YOUTUBE_REFRESH_TOKEN`.
+
 | Provider | Env |
 |---|---|
 | `mock` (default, deterministic) | none |
@@ -54,10 +58,13 @@ mode; actual images are generated when the provider supports them
 
 ### YouTube (optional)
 
-1. Create an OAuth client (type: Desktop/Web app) in Google Cloud Console and
+See **[`GO-LIVE.md`](./GO-LIVE.md)** Part 2 for the full console walkthrough
+(including the 7-day "Testing" token expiry gotcha). Short version:
+
+1. Create an OAuth client (**Desktop app**) in Google Cloud Console and
    enable **YouTube Data API v3**.
 2. Get a refresh token with scopes `youtube.readonly` + `youtube.upload`
-   (one-time consent flow, e.g. via OAuth Playground or a small script).
+   via the included helper: `npm run youtube-token`.
 3. Run with:
 
 ```bash
