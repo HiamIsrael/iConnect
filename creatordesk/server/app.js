@@ -1,26 +1,10 @@
 import express from 'express';
 import path from 'node:path';
 import { config } from './config.js';
+import { ApiError, notFound } from './errors.js';
 
-/**
- * Structured error helper. Every API error response is
- * `{ error: { code, message, details? } }` per SPEC.md.
- */
-export class ApiError extends Error {
-  constructor(status, code, message, details) {
-    super(message);
-    this.status = status;
-    this.code = code;
-    this.details = details;
-  }
-}
-
-export const notFound = (message = 'Resource not found') =>
-  new ApiError(404, 'NOT_FOUND', message);
-export const validationError = (message, details) =>
-  new ApiError(400, 'VALIDATION_ERROR', message, details);
-export const providerError = (message, details) =>
-  new ApiError(502, 'PROVIDER_ERROR', message, details);
+// Re-export the structured error helpers (single source: server/errors.js).
+export { ApiError, notFound, validationError, providerError } from './errors.js';
 
 /** Wrap an async route handler so thrown ApiErrors reach the error middleware. */
 export function ah(fn) {
