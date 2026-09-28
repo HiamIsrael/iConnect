@@ -3,12 +3,53 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CreatorDesk</title>
+    <title>CreatorDesk — YouTube Studio AI Workbench</title>
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main>
-      <h1>CreatorDesk</h1>
-      <p>YouTube Studio AI workbench — UI coming up in the build plan.</p>
-    </main>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">▶</span>
+        <div>
+          <strong>CreatorDesk</strong>
+          <span class="brand-sub">YouTube Studio AI workbench</span>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <a href="#/" data-route="channel">Channel</a>
+        <a href="#/insights" data-route="insights">Insights</a>
+        <a href="#/settings" data-route="settings">Settings</a>
+      </nav>
+      <div class="status" id="status" title="Provider status">
+        <span class="pill" id="pill-ai">AI: …</span>
+        <span class="pill" id="pill-yt">YouTube: …</span>
+      </div>
+    </header>
+
+    <div class="banner demo" id="demo-banner" hidden>
+      Demo mode — channel data is simulated. Configure YouTube OAuth + an AI key in Settings to go live.
+    </div>
+    <div class="banner error" id="error-banner" hidden></div>
+
+    <main id="main" class="main"></main>
+
+    <div class="modal-backdrop" id="modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h2 id="modal-title">Publish to YouTube</h2>
+        <p class="muted" id="modal-sub"></p>
+        <label class="field">Title <input id="pub-title" type="text" maxlength="100" /></label>
+        <label class="field">Description <textarea id="pub-description" rows="8" maxlength="5000"></textarea></label>
+        <label class="field">Tags <input id="pub-tags" type="text" placeholder="comma, separated, tags" /></label>
+        <label class="field">Thumbnail
+          <select id="pub-thumbnail"><option value="">(leave unchanged)</option></select>
+        </label>
+        <div class="modal-actions">
+          <button class="btn ghost" id="modal-cancel">Cancel</button>
+          <button class="btn primary" id="modal-confirm">Publish</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
   </body>
 </html>
