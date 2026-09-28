@@ -5,14 +5,16 @@ import { generateMetadata } from './services/metadata.js';
 import { generateThumbnails } from './services/thumbnails.js';
 import { analyzeVideo } from './services/analysis.js';
 import { channelInsights } from './services/channel.js';
+import { publishVideo, exportBundle } from './services/publish.js';
 
 /**
- * API router. Dependencies (providers) are injected so tests can swap them.
- * All responses are JSON; errors use the structured shape from server/errors.js.
+ * API router. Dependencies (providers + store) are injected so tests can swap
+ * them. All responses are JSON; errors use the structured shape from
+ * server/errors.js.
  */
-export function createApiRouter({ ai, youtube }) {
+export function createApiRouter({ ai, youtube, store }) {
   const router = express.Router();
-  const deps = { ai, youtube };
+  const deps = { ai, youtube, store };
 
   router.get('/health', (req, res) => {
     res.json({
@@ -56,6 +58,14 @@ export function createApiRouter({ ai, youtube }) {
 
   router.get('/channel/insights', ah(async (req, res) => {
     res.json(await channelInsights(deps));
+  }));
+
+  router.get('/videos/:id/export', ah(async (req, res) => {
+    res.json(await exportBundle(deps, req.params.id));
+  }));
+
+  router.post('/videos/:id/publish', ah(async (req, res) => {
+    res.json(await publishVideo(deps, req.params.id, req.body));
   }));
 
   // Unknown API routes → structured 404.
