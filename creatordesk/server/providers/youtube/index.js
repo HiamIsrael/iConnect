@@ -1,4 +1,5 @@
 import { createMockProvider } from './mock.js';
+import { createLiveYouTubeProvider } from './live.js';
 
 /**
  * YouTube provider registry. Providers expose:
@@ -10,11 +11,13 @@ import { createMockProvider } from './mock.js';
  *   setThumbnail(id, dataUrl) → updated detail.
  * Unknown ids throw ApiError NOT_FOUND.
  */
-export function getYoutubeProvider(cfg) {
+export function getYoutubeProvider(cfg, deps) {
   const id = String(cfg?.youtube?.provider || 'mock').toLowerCase();
   switch (id) {
     case 'mock':
       return createMockProvider();
+    case 'live':
+      return createLiveYouTubeProvider(cfg, deps);
     default:
       throw new Error(`Unknown YouTube provider: ${id}`);
   }
