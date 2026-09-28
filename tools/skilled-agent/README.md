@@ -39,8 +39,9 @@ skilled-agent/
 
 ```bash
 cd tools/skilled-agent            # or wherever you extracted it
-cp .env.example .env              # set LLM_BASE_URL / LLM_API_KEY / LLM_MODEL
-node bin/agent.js doctor          # config + endpoint check
+node bin/agent.js setup           # guided wizard: provider → key → model → writes .env, checks endpoint
+#   (or manually: cp .env.example .env and edit)
+node bin/agent.js doctor          # re-check config any time
 node bin/agent.js "explore this directory and summarise the project"    # one-shot
 node bin/agent.js                 # REPL
 node bin/agent.js serve           # Web UI on http://localhost:8787

@@ -46,6 +46,7 @@ async function jobRunner(job) {
 }
 
 async function main() {
+  if (cmd === 'setup') { const { runSetup } = await import('../src/setup.js'); return runSetup(); }
   if (cmd === 'serve') { const { startServer } = await import('../src/server/index.js'); return startServer(); }
   if (cmd === 'telegram') {
     const { startTelegram } = await import('../src/channels/telegram.js');
@@ -72,6 +73,7 @@ async function main() {
   agent                        interactive REPL (scheduler runs in background)
   agent serve                  web UI + HTTP API + WhatsApp webhook (+ Telegram if TELEGRAM_BOT_TOKEN set)
   agent telegram               Telegram bot only (long polling, no public URL needed)
+  agent setup                  guided first-run wizard (writes .env)
   agent skills | tools | jobs | models | doctor
 
 Flags: --model <id> --workdir <path> --approval auto|ask|deny --session <id> --verbose --continue`);
