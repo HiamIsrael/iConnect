@@ -8,8 +8,11 @@
     "node": ">=20"
   },
   "scripts": {
+    "predev": "npm install --no-audit --no-fund --prefer-offline",
     "dev": "node --watch server/index.js",
+    "prestart": "npm install --no-audit --no-fund --prefer-offline",
     "start": "node server/index.js",
+    "pretest": "npm install --no-audit --no-fund --prefer-offline",
     "test": "vitest run",
     "test:watch": "vitest",
     "youtube-token": "node scripts/youtube-refresh-token.mjs"

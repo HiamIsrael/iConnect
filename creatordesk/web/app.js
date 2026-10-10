@@ -99,6 +99,10 @@ function setNav(route) {
 function renderChannel() {
   setNav('channel');
   const c = state.channel;
+  if (!c) {
+    $('#main').innerHTML = `<section class="card"><p class="muted">No channel loaded yet.</p></section>`;
+    return;
+  }
   $('#main').innerHTML = `
     <section class="card" style="margin-bottom:1.25rem">
       <div class="spread">
@@ -503,10 +507,29 @@ function render() {
 window.addEventListener('hashchange', render);
 
 (async function boot() {
-  try {
-    await loadShell();
-  } catch (err) {
-    showError(err);
+  const status = $('#boot-status');
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await loadShell();
+      render();
+      return;
+    } catch (err) {
+      if (attempt < 3) {
+        if (status) status.textContent = `Connecting to the API… (attempt ${attempt}/3)`;
+        await new Promise((r) => setTimeout(r, 800 * attempt));
+        continue;
+      }
+      showError(err);
+      $('#main').innerHTML = `
+        <section class="card" style="text-align:center;padding:2.5rem 1rem">
+          <h2>Can't reach the CreatorDesk API</h2>
+          <p class="muted">${esc(err?.message || String(err))}</p>
+          <p class="muted small">If this is a preview link, make sure the server is running
+          (<code>cd creatordesk &amp;&amp; npm run dev</code>) and refresh this page.</p>
+          <button class="btn primary" id="retry-boot">Retry</button>
+        </section>`;
+      const retry = $('#retry-boot');
+      if (retry) retry.addEventListener('click', () => location.reload());
+    }
   }
-  render();
 })();
