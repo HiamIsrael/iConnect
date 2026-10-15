@@ -291,3 +291,82 @@ effectively unlimited at this scale.
 - [Refreshing access tokens](https://developers.google.com/identity/protocols/oauth2/native-app#refresh) (incl. Testing-mode expiry)
 - [OpenAI API pricing](https://openai.com/api/pricing/) · [Anthropic billing FAQ](https://support.claude.com/en/articles/8325606-billing-faq) · [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing)
 - [YouTube API quota/costs 2026](https://outlierkit.com/resources/youtube-api-pricing/) · [Testing-mode token expiry write-up](https://dev.to/ko-hi/googles-oauth-testing-mode-expires-refresh-tokens-in-7-days-publish-the-consent-screen-before-24hm)
+
+## Agent workspace: live operation requirements
+
+The new landing page is the agent desk. The old generation workbench is at
+`/workbench.html` (demo use; the agent UI supports live token unlocking).
+
+**Current supported tools:** channel review, selected-video analysis,
+metadata proposals (title/description/tags), applying an approved metadata
+proposal, and scheduling an existing eligible private upload. It does **not**
+upload video files, manage comments, resolve copyright, monetize, or provide
+YouTube Analytics watch-time/revenue reports. It is not an official Claude
+connector or an unrestricted Studio browser agent.
+
+### Configure a live single-operator deployment
+
+Use a persistent Node >=20 server with HTTPS, outbound Google and selected AI
+provider access, and a persistent `CREATORDESK_DATA_DIR`. Run one replica only:
+proposal execution locks and the JSON store are not a multi-process queue.
+Do not expose this service over plain HTTP or share the operator token.
+
+```sh
+CREATORDESK_ACCESS_TOKEN=<strong-random-value-at-least-16-characters>
+CREATORDESK_YOUTUBE=live
+YOUTUBE_CLIENT_ID=<your-client-id>
+YOUTUBE_CLIENT_SECRET=<your-client-secret>
+YOUTUBE_REFRESH_TOKEN=<locally-generated-refresh-token>
+CREATORDESK_AI_PROVIDER=anthropic
+ANTHROPIC_API_KEY=<your-api-key>
+# openai / OPENAI_API_KEY or gemini / GEMINI_API_KEY are alternatives
+```
+
+Set these through your host's secret manager or private environment file,
+**not** chat, Git, the browser console, or the agent conversation. Follow the
+OAuth steps above on your own computer. You must personally consent to the
+Google authorization request; this app cannot grant itself channel access.
+Never send a Google password to this app.
+
+After restarting, open **Connections**, enter only the operator access token,
+and choose **Unlock this tab**. The token lives in page memory and is cleared
+on reload. All live APIs except health require bearer authentication. Live
+startup refuses a missing/short token. Read-only status is not proof a live API
+request succeeded: verify the channel loads after unlocking.
+
+### Scheduling semantics and safety
+
+Select the target video and a date/time in your browser's local timezone;
+the proposal displays the local time and exact UTC timestamp. Review before
+approval. YouTube must accept `videos.update` with `status.privacyStatus=private`
+and `status.publishAt`. Only eligible private, never-published uploads can be
+scheduled; public/unlisted videos are refused rather than silently made private.
+YouTube performs the timed release, so the app need not stay running afterward.
+The app cannot prove eligibility beyond the exposed status; API rejection is
+reported rather than claimed as success.
+
+Proposals expire after one hour, are bound to their server-side preview, and
+cannot be approved twice. If a write fails or its outcome is uncertain, the
+proposal is marked `needs-review` and cannot be blindly retried. Check Studio
+before requesting another change. No API can guarantee rollback of a write
+when a network connection drops after submission. Keep backups of metadata.
+
+### Portable interactive demo (no server required)
+
+```sh
+npm run build:demo
+# Open dist/CreatorDesk-Agent.html in your browser.
+```
+
+This single file embeds the same orchestration service and mock providers.
+It works without network access. All data is simulated, and proposals,
+receipts and changes live in memory until reload. It cannot authorize or
+change a real YouTube channel. The build output is intentionally git-ignored.
+
+### Verification in this change
+
+API tests use mocked Google/LLM responses. Browser checks covered metadata
+preparation → approval → receipt, scheduling approval, connections, and a
+390px layout with no horizontal overflow. A separate browser check opened
+the portable HTML through `file://` and approved a demo metadata change.
+No live Google/AI request was verified from the restricted development sandbox.

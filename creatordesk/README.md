@@ -122,3 +122,21 @@ Design notes: providers are resolved from env config and injected into the
 router (tests pass stubs); all outbound HTTP uses injectable `fetch` with
 timeouts; nothing writes to a real channel without an explicit user
 confirmation. See `docs/adr/0001-pluggable-provider-registry.md`.
+
+## Agent-first workspace
+
+The landing page now includes a conversational channel assistant, visual video
+comparison, content library, approval previews, publishing receipts, and
+connection instructions. Ask it to review your channel, analyze a selected
+video, improve its title/description, or schedule it using the date control.
+The deterministic demo is not a live LLM. Choose Anthropic, OpenAI, or Gemini
+and authorize YouTube on an unrestricted deployment for live tools.
+
+Every mutation requires approval of an immutable server-side proposal.
+Live providers require `CREATORDESK_ACCESS_TOKEN` (16+ characters); unlock the
+agent UI in Connections. Run a single server replica with persistent data and
+HTTPS. See [the agent setup and limitations](GO-LIVE.md#agent-workspace-live-operation-requirements).
+
+`npm run build:demo` builds a standalone interactive HTML demo at
+`dist/CreatorDesk-Agent.html`: open it directly, no server needed. It embeds
+the shared demo tools, never calls YouTube, and resets on reload.
