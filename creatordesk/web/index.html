@@ -2,57 +2,241 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CreatorDesk — YouTube Studio AI Workbench</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CreatorDesk — Your channel, handled.</title>
+    <link rel="stylesheet" href="/agent.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark">▶</span>
-        <div>
-          <strong>CreatorDesk</strong>
-          <span class="brand-sub">YouTube Studio AI workbench</span>
+    <aside class="sidebar">
+      <a class="brand" href="/"
+        ><span class="logo">c<span>✦</span></span
+        >creatordesk<span class="beta">AGENT</span></a
+      >
+      <div class="workspace-label">YOUR WORKSPACE</div>
+      <button class="nav-item active" data-view="agent">
+        <span>✧</span> Channel assistant <i>01</i>
+      </button>
+      <button class="nav-item" data-view="library"><span>▤</span> Content library</button>
+      <button class="nav-item" data-view="activity"><span>◷</span> Publishing activity</button>
+      <div class="workspace-label second">CONFIGURATION</div>
+      <button class="nav-item" data-view="connections">
+        <span>⊞</span> Connections <b class="dot"></b>
+      </button>
+      <a class="nav-item" href="/workbench.html"><span>↗</span> Classic workbench</a>
+      <div class="sidebar-bottom">
+        <div class="safety-icon">✓</div>
+        <strong>You're always in control.</strong>
+        <p>Your agent prepares the work.<br />You approve channel changes.</p>
+        <div class="profile">
+          <span class="avatar">Y</span>
+          <div>Your workspace<small>Single-channel studio</small></div>
         </div>
       </div>
-      <nav class="nav" id="nav">
-        <a href="#/" data-route="channel">Channel</a>
-        <a href="#/insights" data-route="insights">Insights</a>
-        <a href="#/settings" data-route="settings">Settings</a>
-      </nav>
-      <div class="status" id="status" title="Provider status">
-        <span class="pill" id="pill-ai">AI: …</span>
-        <span class="pill" id="pill-yt">YouTube: …</span>
-      </div>
-    </header>
-
-    <div class="banner demo" id="demo-banner" hidden>
-      Demo mode — channel data is simulated. Configure YouTube OAuth + an AI key in Settings to go live.
-    </div>
-    <div class="banner error" id="error-banner" hidden></div>
-
-    <main id="main" class="main">
-      <noscript><p class="banner error">CreatorDesk needs JavaScript enabled.</p></noscript>
-      <p class="muted" id="boot-status">Loading CreatorDesk…</p>
-    </main>
-
-    <div class="modal-backdrop" id="modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <h2 id="modal-title">Publish to YouTube</h2>
-        <p class="muted" id="modal-sub"></p>
-        <label class="field">Title <input id="pub-title" type="text" maxlength="100" /></label>
-        <label class="field">Description <textarea id="pub-description" rows="8" maxlength="5000"></textarea></label>
-        <label class="field">Tags <input id="pub-tags" type="text" placeholder="comma, separated, tags" /></label>
-        <label class="field">Thumbnail
-          <select id="pub-thumbnail"><option value="">(leave unchanged)</option></select>
-        </label>
-        <div class="modal-actions">
-          <button class="btn ghost" id="modal-cancel">Cancel</button>
-          <button class="btn primary" id="modal-confirm">Publish</button>
+    </aside>
+    <div class="shell">
+      <header class="topbar">
+        <div class="breadcrumb">
+          Workspace <span>/</span> <strong id="view-name">Channel assistant</strong>
         </div>
-      </div>
+        <div class="top-actions">
+          <span class="mode" id="mode">Checking connection</span
+          ><button class="button outline small" data-view="connections">
+            Manage connections ↗
+          </button>
+        </div>
+      </header>
+      <main>
+        <div id="notice" class="notice" role="status" hidden></div>
+        <section id="agent-view">
+          <div class="page-heading">
+            <div class="eyebrow">LESS BUSYWORK. MORE CREATING.</div>
+            <h1>Your channel, handled<span>.</span></h1>
+            <p>A second pair of hands for everything between an idea and publish.</p>
+            <div class="heading-meta">
+              <span class="status-dot"></span><span id="agent-status">Starting your workspace…</span
+              ><span class="divider">|</span><span>Every change needs your approval</span>
+            </div>
+          </div>
+          <div class="agent-grid">
+            <section class="assistant-panel">
+              <div class="panel-heading">
+                <div class="agent-avatar">✦</div>
+                <div>
+                  <strong>Channel assistant</strong
+                  ><small id="provider-label">Connecting to tools</small>
+                </div>
+                <span class="private-badge">◈ Approval-first</span>
+              </div>
+              <div id="conversation" class="conversation" aria-live="polite">
+                <div class="welcome">
+                  <div class="orb">✦</div>
+                  <h2>What are we creating today?</h2>
+                  <p>
+                    Review your channel, give a video a better launch,<br />or get your next upload
+                    on the calendar.
+                  </p>
+                </div>
+                <div class="prompt-grid" id="prompts">
+                  <button data-prompt="Review my channel performance">
+                    <span>↗</span><strong>Find my next move</strong
+                    ><small>Review the channel and opportunities</small><i>↗</i>
+                  </button>
+                  <button data-prompt="Improve the title and description of this video">
+                    <span>✧</span><strong>Polish a video</strong
+                    ><small>Prepare titles, description & tags</small><i>↗</i>
+                  </button>
+                  <button data-prompt="Schedule this video">
+                    <span>◷</span><strong>Plan a publishing time</strong
+                    ><small>Schedule an existing upload</small><i>↗</i>
+                  </button>
+                  <button data-prompt="Analyze this video">
+                    <span>≋</span><strong>Get a second opinion</strong
+                    ><small>Review content and packaging</small><i>↗</i>
+                  </button>
+                </div>
+              </div>
+              <form id="composer" class="composer">
+                <label class="sr-only" for="message">Message your channel assistant</label
+                ><textarea
+                  id="message"
+                  rows="2"
+                  maxlength="4000"
+                  placeholder="Ask your assistant to take something off your plate…"
+                  required
+                ></textarea>
+                <div class="composer-footer">
+                  <span>✧ <span id="composer-mode">Demo assistant</span></span
+                  ><button class="send" id="send" type="submit" aria-label="Send message">↑</button>
+                </div>
+              </form>
+              <div class="context-controls">
+                <label
+                  >VIDEO CONTEXT<select id="video-select">
+                    <option value="">Select a video</option>
+                  </select></label
+                ><label
+                  >SCHEDULE TIME <span id="timezone"></span
+                  ><input id="schedule-time" type="datetime-local"
+                /></label>
+              </div>
+              <p class="assistant-footnote">
+                No silent edits. No surprise publishes. Review the exact changes before approving.
+              </p>
+            </section>
+            <aside class="context-panel">
+              <section class="channel-card">
+                <div class="section-label">YOUR CHANNEL <span id="channel-kind">DEMO</span></div>
+                <div class="channel-identity">
+                  <div class="channel-avatar" id="channel-avatar">SS</div>
+                  <div>
+                    <h3 id="channel-title">Loading channel…</h3>
+                    <small id="channel-subtitle">YouTube workspace</small>
+                  </div>
+                </div>
+                <div class="channel-stats">
+                  <div><strong id="subscribers">—</strong><small>Subscribers</small></div>
+                  <div><strong id="views">—</strong><small>Lifetime views</small></div>
+                  <div><strong id="video-count">—</strong><small>Videos</small></div>
+                </div>
+              </section>
+              <section class="performance-card">
+                <div class="section-label">VIDEO PERFORMANCE <span>VIEWS</span></div>
+                <h3>A little perspective.</h3>
+                <p>Compare the latest loaded videos.<br />No invented trends or growth claims.</p>
+                <div id="performance-bars" class="performance-bars"></div>
+                <div class="chart-caption">Views per video · not a time-series chart</div>
+              </section>
+              <section class="capability-card">
+                <div class="section-label">THE WORK BEHIND THE WORK</div>
+                <div><span>✓</span> Channel & video reviews</div>
+                <div><span>✓</span> Titles, descriptions & tags</div>
+                <div><span>✓</span> Approved publishing schedules</div>
+                <p>Uploads, comments, revenue and copyright tools are not supported yet.</p>
+              </section>
+            </aside>
+          </div>
+        </section>
+        <section id="library-view" hidden>
+          <div class="eyebrow">CONTENT LIBRARY</div>
+          <h1>Make every video count.</h1>
+          <p class="page-sub">Select a video to bring it into your assistant's context.</p>
+          <div id="library" class="library-grid"></div>
+        </section>
+        <section id="activity-view" hidden>
+          <div class="eyebrow">PUBLISHING ACTIVITY</div>
+          <h1>A receipt for every change.</h1>
+          <p class="page-sub">
+            Completed channel operations. Demo changes never reach YouTube. Refresh to load recent
+            receipts.
+          </p>
+          <button class="button outline" id="refresh-activity">Refresh activity</button>
+          <div id="activity-list"></div>
+        </section>
+        <section id="connections-view" hidden>
+          <div class="eyebrow">CONNECTIONS</div>
+          <h1>Your tools. One assistant.</h1>
+          <p class="page-sub">
+            Credentials stay on your server. Never paste API keys or Google tokens into the
+            conversation.
+          </p>
+          <div class="connection-grid">
+            <article class="connection-card">
+              <span class="service-icon youtube">▶</span>
+              <h2>YouTube</h2>
+              <span class="mode" id="yt-connection">Checking</span>
+              <p>
+                Read your channel and videos. Apply approved metadata and schedule eligible private
+                uploads through the official Data API.
+              </p>
+              <ol>
+                <li>Deploy on a persistent HTTPS server with outbound Google access.</li>
+                <li>Create your Google OAuth client and enable YouTube Data API v3.</li>
+                <li>
+                  Use <code>npm run youtube-token</code> on your own computer and consent to channel
+                  access.
+                </li>
+                <li>Set the YouTube environment variables and restart the server.</li>
+              </ol>
+              <a href="/GO-LIVE.md" target="_blank" class="button outline">Open setup guide ↗</a>
+            </article>
+            <article class="connection-card">
+              <span class="service-icon ai">✦</span>
+              <h2>Your AI provider</h2>
+              <span class="mode" id="ai-connection">Checking</span>
+              <p>
+                Use Anthropic (Claude), OpenAI, or Gemini for request interpretation and content
+                generation. This is a custom app, not an official Claude connector.
+              </p>
+              <code class="env-block"
+                >CREATORDESK_AI_PROVIDER=anthropic<br />ANTHROPIC_API_KEY=…<br />CREATORDESK_ACCESS_TOKEN=…</code
+              >
+              <p>
+                Choose a strong operator access token (16+ characters). Live providers are protected
+                by it.
+              </p>
+              <label class="token-label"
+                >Operator access token<input
+                  type="password"
+                  id="operator-token"
+                  autocomplete="off"
+                  placeholder="Unlock a configured live server" /></label
+              ><button class="button dark" id="unlock">Unlock this tab</button
+              ><small class="token-note">Kept in tab memory only. Cleared when you reload.</small>
+            </article>
+          </div>
+          <div class="connection-warning">
+            <strong>Connection is not authorization.</strong> This sandbox cannot reach Google or AI
+            provider APIs. Demo mode is usable here; real channel operations require your consent,
+            credentials, and an unrestricted deployment. Not all YouTube Studio features are exposed
+            by the API.
+          </div>
+        </section>
+      </main>
+      <footer>
+        CREATORDESK <span>Thoughtful tools for independent creators.</span
+        ><span class="footer-right">Built to assist. Not to take over. ✦</span>
+      </footer>
     </div>
-
-    <script src="/app.js"></script>
+    <script src="/agent.js"></script>
   </body>
 </html>
