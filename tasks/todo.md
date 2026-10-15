@@ -230,3 +230,7 @@ architecture), ADR for provider-registry decision, then
 - [x] All tests pass (`cd creatordesk && npm test`)
 - [x] App runs via `npm run dev` and the full workflow works on the demo channel
 - [x] Spec + map + tasks reflect reality
+
+### Visual review follow-up
+- [x] Reproduce hidden publish backdrop intercepting workspace clicks in Chromium.
+- [x] Fix hidden-element display and verify browser navigation with screenshots (channel, generated metadata, insights); no browser page errors.

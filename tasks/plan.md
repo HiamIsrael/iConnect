@@ -70,3 +70,6 @@ config + createApp shell + /api/health        (studio-core)
 T5/T6 and T7/T8 are parallelizable once T2–T4 land (independent services over
 the same provider interfaces). T12–T14 are sequential UI polish but can start
 after T4 against a mock API.
+
+### Visual review follow-up
+Reproduce hidden-modal click interception in Chromium; enforce the HTML hidden attribute in CSS; repeat real-browser navigation and capture the demo overview, generated metadata, and insights.

@@ -249,3 +249,6 @@ export function buildChapters(segments, { minChapters = 3, maxChapters = 8 } = {
   vs `youtube.force-ssl`) — v1 uses `youtube.readonly` + `youtube.upload`.
 - Desired brand voice for titles/descriptions — surfaced as an optional `tone`
   input in v1 (default: "clear, energetic, specific").
+
+### Visual verification regression
+Elements marked `hidden`, especially the publish modal backdrop, must not render or intercept pointer events until explicitly opened. Verify the channel → workspace → insights flow in a real browser and supply screenshots for visual review.
