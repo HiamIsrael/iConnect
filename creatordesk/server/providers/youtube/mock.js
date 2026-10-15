@@ -40,6 +40,11 @@ export function createMockProvider() {
       if (tags !== undefined) v.tags = tags.map((t) => String(t));
       return clone(v);
     },
+    async scheduleVideo(id, publishAt) {
+      const v = requireVideo(id);
+      v.status = { privacyStatus: 'private', publishAt };
+      return clone(v);
+    },
     async setThumbnail(id, dataUrl) {
       const v = requireVideo(id);
       v.thumbnailUrl = String(dataUrl);

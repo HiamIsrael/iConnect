@@ -1,3 +1,5 @@
+import { scheduleDate } from '../../services/schedule-date.js';
+import { validationError } from '../../errors.js';
 import { providerError, notFound } from '../../errors.js';
 
 /** Parse ISO-8601 durations like PT12M32S / PT1H2M3S into seconds. */
@@ -33,6 +35,7 @@ export function createLiveYouTubeProvider(cfg, { fetchImpl = fetch } = {}) {
     const res = await fetchImpl('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      signal: AbortSignal.timeout(timeoutMs),
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -42,6 +45,7 @@ export function createLiveYouTubeProvider(cfg, { fetchImpl = fetch } = {}) {
     });
     if (!res.ok) throw providerError(`YouTube OAuth token refresh failed (HTTP ${res.status})`);
     const data = await res.json();
+    if (!data.access_token) throw providerError('YouTube OAuth response missing access token');
     token = data.access_token;
     tokenExpiry = Date.now() + (Number(data.expires_in) || 3600) * 1000;
     return token;
@@ -73,6 +77,10 @@ export function createLiveYouTubeProvider(cfg, { fetchImpl = fetch } = {}) {
       duration: parseIsoDuration(item.contentDetails?.duration),
       thumbnailUrl: item.snippet?.thumbnails?.medium?.url || '',
       tags: item.snippet?.tags || [],
+      categoryId: item.snippet?.categoryId,
+      defaultLanguage: item.snippet?.defaultLanguage,
+      defaultAudioLanguage: item.snippet?.defaultAudioLanguage,
+      status: item.status,
       stats: {
         viewCount: Number(item.statistics?.viewCount || 0),
         likeCount: Number(item.statistics?.likeCount || 0),
@@ -83,7 +91,7 @@ export function createLiveYouTubeProvider(cfg, { fetchImpl = fetch } = {}) {
 
   async function fetchVideoItems(ids) {
     const data = await api(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${encodeURIComponent(ids.join(','))}&maxResults=25`
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status&id=${encodeURIComponent(ids.join(','))}&maxResults=25`
     );
     return (data.items || []).map(mapVideo);
   }
@@ -134,12 +142,32 @@ export function createLiveYouTubeProvider(cfg, { fetchImpl = fetch } = {}) {
         description: description !== undefined ? description : current.description,
         tags: tags !== undefined ? tags : current.tags,
       };
+      for (const key of ['categoryId', 'defaultLanguage', 'defaultAudioLanguage']) {
+        if (current[key] !== undefined) snippet[key] = current[key];
+      }
       await api('https://www.googleapis.com/youtube/v3/videos?part=snippet', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id, snippet }),
       });
       return { ...current, ...snippet };
+    },
+    async scheduleVideo(id, publishAt) {
+      const date = scheduleDate(publishAt);
+      const channel = await this.getChannel();
+      const data = await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${encodeURIComponent(id)}`);
+      const current = data.items?.[0];
+      if (!current) throw notFound('Video not found');
+      if (current.snippet?.channelId !== channel.id) throw validationError('Video is not owned by the connected channel');
+      if (current.status?.privacyStatus !== 'private') throw validationError('Only an eligible private, never-published upload can be scheduled.');
+      const status = { privacyStatus: 'private', publishAt: date };
+      for (const key of ['selfDeclaredMadeForKids', 'license', 'embeddable', 'publicStatsViewable', 'containsSyntheticMedia']) {
+        if (current.status[key] !== undefined) status[key] = current.status[key];
+      }
+      return api('https://www.googleapis.com/youtube/v3/videos?part=status', {
+        method: 'PUT', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
     },
     async setThumbnail(id, dataUrl) {
       const { mime, bytes } = parseDataUrl(dataUrl);

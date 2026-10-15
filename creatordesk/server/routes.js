@@ -1,3 +1,4 @@
+import { createAgent } from './services/agent.js';
 import express from 'express';
 import { config } from './config.js';
 import { notFound, ah } from './errors.js';
@@ -67,6 +68,11 @@ export function createApiRouter({ ai, youtube, store }) {
   router.post('/videos/:id/publish', ah(async (req, res) => {
     res.json(await publishVideo(deps, req.params.id, req.body));
   }));
+
+  const agent = createAgent(deps);
+  router.post('/agent/chat', ah(async (req, res) => res.json(await agent.chat(req.body))));
+  router.post('/agent/approve/:id', ah(async (req, res) => res.json(await agent.approve(req.params.id, req.body))));
+  router.get('/agent/activity', ah(async (req, res) => res.json(await agent.activity())));
 
   // Unknown API routes → structured 404.
   router.use((req, res, next) => {

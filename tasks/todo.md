@@ -234,3 +234,10 @@ architecture), ADR for provider-registry decision, then
 ### Visual review follow-up
 - [x] Reproduce hidden publish backdrop intercepting workspace clicks in Chromium.
 - [x] Fix hidden-element display and verify browser navigation with screenshots (channel, generated metadata, insights); no browser page errors.
+
+## Agent-first revision
+- [x] Tool orchestration and immutable approval proposals, tested.
+- [x] YouTube-native schedule adapter and safety validation, tested.
+- [x] Agent UI, performance bars, connection checklist, and mobile layout.
+- [x] Browser checks (desktop/mobile + standalone file), screenshots and documentation; 75 API/unit tests green.
+- [x] Push completed revision to existing PR.

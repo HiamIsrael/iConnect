@@ -73,3 +73,11 @@ after T4 against a mock API.
 
 ### Visual review follow-up
 Reproduce hidden-modal click interception in Chromium; enforce the HTML hidden attribute in CSS; repeat real-browser navigation and capture the demo overview, generated metadata, and insights.
+
+## Agent-first revision
+1. Add failing tests for conversation validation, tool allowlist, approval gates, duplicate protection, scheduling validation, live API payload and ownership.
+2. Implement bounded tool orchestration and YouTube-native scheduling with receipts and live operator access gate.
+3. Build a new responsive agent landing page with visual performance, chat, review cards, schedule inputs, and truthful connection guidance; preserve the previous workbench.
+4. Run tests and Chromium interactions; capture desktop/mobile screenshots; push to existing PR. Document deployment and remaining integration limitations.
+
+Security review: untrusted chat/model output may select only the five allowlisted intents; generation schemas and publish limits remain enforced. Immutable proposal IDs prevent client patch substitution; channel/mode binding, expiry, one-execution locks and uncertain-outcome blocking protect approvals. Live API and paid-provider access require the operator bearer token. UI output is escaped and credentials remain server-side. Remaining constraints: single process/JSON store, no multi-user roles, no live integration verification, and no universal Studio automation.

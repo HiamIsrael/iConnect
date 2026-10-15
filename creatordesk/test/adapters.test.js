@@ -187,7 +187,7 @@ describe('youtube live adapter', () => {
       ['oauth2.googleapis.com/token', () => ({ body: { access_token: 'at-1', expires_in: 3600 } })],
       ['/videos?', (init) => {
         if (init.method === 'PUT') return { body: { id: 'v1' } };
-        return { body: { items: [{ id: 'v1', snippet: { title: 'Old', description: 'D', publishedAt: 'p', tags: ['a'] }, statistics: {}, contentDetails: {} }] } };
+        return { body: { items: [{ id: 'v1', snippet: { title: 'Old', description: 'D', publishedAt: 'p', tags: ['a'], categoryId: '10', defaultLanguage: 'en' }, statistics: {}, contentDetails: {} }] } };
       }],
     ]);
     const p = getYoutubeProvider(cfg, { fetchImpl });
@@ -196,6 +196,8 @@ describe('youtube live adapter', () => {
     expect(put).toBeTruthy();
     const body = JSON.parse(put.init.body);
     expect(body.snippet.title).toBe('New');
+    expect(body.snippet.categoryId).toBe('10');
+    expect(body.snippet.defaultLanguage).toBe('en');
     expect(body.snippet.description).toBe('D'); // untouched fields preserved
   });
 
